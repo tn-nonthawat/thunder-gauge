@@ -25,7 +25,7 @@ The ECU side is read-only: the firmware sends only the wake/init frames and read
 
 ## Install / update from an Android phone
 
-1. On the phone, download `firmware/thunder-gauge-lite.bin` from this repository (open the file, then "Download raw file").
+1. On the phone, download the firmware: [thunder-gauge-lite.bin (v0.9-beta)](https://github.com/tn-nonthawat/thunder-gauge/releases/download/v0.9-beta/thunder-gauge-lite.bin). Newer versions will be on the [Releases](https://github.com/tn-nonthawat/thunder-gauge/releases) page.
 2. Turn the key on, join the Wi-Fi `ThunderGauge-Lite` (password `thunder123` until you change it). If Android says the network has no internet, choose to stay connected.
 3. Open `http://192.168.4.1/update` in the browser (or System tab → อัปเดตเฟิร์มแวร์), pick the .bin and upload.
 4. The board restarts by itself. If the upload breaks off, the old firmware keeps running.

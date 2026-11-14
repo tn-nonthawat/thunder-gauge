@@ -1,0 +1,42 @@
+    <div class="card" id="kl-card" hidden>
+      <h2>ทดสอบ K-Line <span class="chip dim">อ่านอย่างเดียว</span></h2>
+      <p class="note" style="color:var(--warn)">การ์ดนี้ขึ้นเพราะบอร์ดปลุก ECU ไม่ติด ถ้า ECU ตอบปกติ การ์ดจะไม่แสดง</p>
+      <p class="note">บิดกุญแจ ยังไม่ต้องสตาร์ท แล้วกด "ปลุก ECU" · ส่งแค่คำสั่งปลุกและขออ่านข้อมูล ไม่เขียนอะไรลงกล่อง</p>
+      <div class="kv">
+        <div><span>สาย K-Line</span><b id="kl-line">–</b></div>
+        <div><span>ECU</span><b id="kl-st">ยังไม่ได้ปลุก</b></div>
+      </div>
+      <div class="acts">
+        <button class="btn go" id="kl-auto" type="button">ปลุก ECU</button>
+        <button class="btn" id="kl-mod" type="button">ผ่านโมดูล</button>
+        <button class="btn" id="kl-npn" type="button">ทรานซิสเตอร์</button>
+      </div>
+      <div class="ctl">
+        <label for="kl-tbl">ตารางที่จะอ่าน</label>
+        <select id="kl-tbl"><option value="17">0x17 · ค่าหลัก (Wave 110i)</option><option value="11">0x11</option><option value="00">0x00 · รหัสรุ่นกล่อง</option><option value="10">0x10</option><option value="20">0x20</option><option value="61">0x61</option><option value="70">0x70</option><option value="D0">0xD0</option><option value="D1">0xD1</option></select>
+      </div>
+      <div class="acts">
+        <button class="btn" id="kl-read" type="button">อ่าน 1 ครั้ง</button>
+        <button class="btn" id="kl-live" type="button">อ่านต่อเนื่อง</button>
+      </div>
+      <p class="note">ลองบิดคันเร่งหรือสตาร์ทเครื่อง ไบต์ที่เปลี่ยนจะเป็นสีเหลือง</p>
+      <div class="tbl"><table class="kpr"><thead><tr><th>ไบต์</th><th>hex</th><th>dec</th><th>dec−40</th><th>คู่ ×256</th></tr></thead><tbody id="kl-dt"></tbody></table></div>
+      <p class="note" id="kl-guess"></p>
+      <div class="acts">
+        <button class="btn small" id="kl-copy" type="button">คัดลอกผลทั้งหมด</button>
+        <button class="btn small" id="kl-check" type="button">เช็คสายใหม่</button>
+        <button class="btn small" id="kl-clear" type="button">ล้างบันทึก</button>
+      </div>
+      <pre id="kl-log" style="white-space:pre-wrap;word-break:break-all;font:12px/1.45 ui-monospace,monospace;margin:0;max-height:40vh;overflow:auto;background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:8px"></pre>
+      <textarea id="kl-ta" aria-hidden="true" tabindex="-1" style="position:absolute;left:-9999px"></textarea>
+    </div>
+    <div class="card" id="scan-card">
+      <h2>เพิ่มรุ่นรถ · สแกนตาราง ECU <span class="chip dim">อ่านอย่างเดียว</span></h2>
+      <p class="note">ตารางข้อมูลที่ใช้อยู่: <b id="scan-tbl">–</b></p>
+      <p class="note">ถ้ารถของคุณไม่ใช่ Wave 110i แล้วค่าบนจอไม่ตรง ให้สแกน 4 ครั้งแล้วส่งผลให้ผู้พัฒนา: ① เปิดกุญแจ ไม่สตาร์ท ② สตาร์ทแล้วเดินเบา ③ ตั้งขาตั้งคู่ ค้างคันเร่งที่รอบประมาณ 4,000 ④ ขี่จนเครื่องร้อนแล้วเดินเบา · แต่ละครั้งกด "สแกน" รอ 30–60 วินาที แล้วกด "คัดลอกผล" ระหว่างสแกนหน้าเกจจะหยุดอัปเดต</p>
+      <div class="acts">
+        <button class="btn go" id="scan-go" type="button">สแกน</button>
+        <button class="btn" id="scan-copy" type="button" disabled>คัดลอกผล</button>
+      </div>
+      <pre id="scan-out" hidden style="white-space:pre-wrap;word-break:break-all;font:12px/1.45 ui-monospace,monospace;margin:0;max-height:40vh;overflow:auto;background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:8px"></pre>
+    </div>

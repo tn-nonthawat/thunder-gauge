@@ -10,7 +10,7 @@ Version 0.9-beta.
 
 A phone dashboard for the Honda Wave 110i, made for learning how the ECU works. An ESP32-C3 reads the ECU over K-Line and serves the gauge page over its own Wi-Fi. K-Line only: no GPS module, no motion sensor.
 
-New (beta, not yet tested on a bike): a Bluetooth phone app for Android. The board talks to the app over Bluetooth instead of Wi-Fi, and the app uses the phone's own GPS for road speed (the Wave 110i ECU sends none), so the speed dial, the gear number and the timer tab work. See "Bluetooth app" below.
+New (beta, not yet tested on a bike): a Bluetooth phone app for Android (Chrome) and iPhone (Bluefy browser). The board talks to the app over Bluetooth instead of Wi-Fi, and the app uses the phone's own GPS for road speed (the Wave 110i ECU sends none), so the speed dial, the gear number and the timer tab work. See "Bluetooth app" below.
 
 The ECU side is read-only: the firmware sends only the wake/init frames and read requests (live data tables, fault-code pages). It never writes to the ECU and never clears codes.
 
@@ -63,8 +63,9 @@ Once the app is connected, the board turns its Wi-Fi off by itself (unless a pho
 
 - Speed comes from the phone's GPS, about once a second: fine for the dial and comparing runs on your own bike, less exact than a GPS module.
 - Everything else works as over Wi-Fi: settings, shared screen layout, fault codes, the scan card, firmware update (Settings → อัปเดตเฟิร์มแวร์, over Bluetooth, takes a few minutes).
-- Need the Wi-Fi page again (an iPhone, or a second phone)? In the app: Settings → บลูทูธ · GPS มือถือ → turn the board's Wi-Fi on, or press BOOT briefly. It turns itself off after 10 minutes with nobody on it.
-- iPhone Safari has no Web Bluetooth: use the Wi-Fi page there (no speed).
+- Need the Wi-Fi page again (a second phone)? In the app: Settings → บลูทูธ · GPS มือถือ → turn the board's Wi-Fi on, or press BOOT briefly. It turns itself off after 10 minutes with nobody on it.
+- iPhone: Safari and Chrome on iPhone have no Web Bluetooth. Open the app in the free **Bluefy** browser (App Store) instead: connecting and GPS speed work there (checked on the bench). Without Bluefy, use the Wi-Fi page (no speed).
+- Only one phone at a time can be connected over Bluetooth.
 - Holding BOOT for 3 s also makes the board forget paired phones.
 
 ## Which bikes work

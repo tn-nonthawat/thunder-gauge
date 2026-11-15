@@ -1,0 +1,57 @@
+<!doctype html><html lang="th"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#0b0e14">
+<title>อัปเดตเฟิร์มแวร์</title>
+<!-- Firmware update over Bluetooth for the phone app (app/update.html, built by mk_budget.py). It opens in a frame over
+     the gauge and uses the gauge's Bluetooth link (parent.TGBLE.ota, source/app_ble.js -> firmware ble_link.h). Same
+     safety as the Wi-Fi /update page: the board only switches to the new firmware when all of it arrived and verified. -->
+<style>body{margin:0;font:15px/1.5 "Leelawadee UI",Tahoma,system-ui,sans-serif;background:#0b0e14;color:#e8edf6;padding:20px max(16px,env(safe-area-inset-left)) 40px}
+.c{max-width:460px;margin:auto;background:#141924;border:1px solid #2a3346;border-radius:14px;padding:18px}
+h1{font-size:19px;margin:0 0 6px}p{color:#8d97ab;font-size:13.5px}
+input{width:100%;margin:10px 0;color:#e8edf6}
+button{width:100%;padding:12px;font:600 15px inherit;font-family:inherit;border-radius:10px;border:0;background:linear-gradient(90deg,#ff3b30,#ff7a1a);color:#fff;cursor:pointer}
+button.s{background:#1b2130;border:1px solid #2a3346;margin-top:10px}button:disabled{opacity:.5}
+.bar{height:10px;background:#1b2130;border-radius:6px;overflow:hidden;margin:12px 0}.bar i{display:block;height:100%;width:0;background:#ff7a1a}
+#m{font-weight:600;min-height:1.5em}.ok{color:#3ccf7a}.bad{color:#ff5a4e}</style></head>
+<body><div class="c"><h1 data-t="อัปเดตเฟิร์มแวร์ผ่านบลูทูธ">อัปเดตเฟิร์มแวร์ผ่านบลูทูธ</h1>
+<p><span data-t="เฟิร์มแวร์ที่ใช้อยู่:">เฟิร์มแวร์ที่ใช้อยู่:</span> <b id="v">–</b></p>
+<p data-t="ดาวน์โหลดไฟล์ .bin ของรุ่น Lite จาก GitHub (Releases) ลงมือถือก่อน แล้วเลือกไฟล์และกดอัปโหลด ใช้เวลาประมาณ 2–5 นาที ให้เปิดหน้านี้ค้างไว้และวางมือถือใกล้บอร์ด ถ้าอัปไม่ครบ บอร์ดจะใช้เฟิร์มแวร์เดิมต่อ ไม่เสีย">ดาวน์โหลดไฟล์ .bin ของรุ่น Lite จาก GitHub (Releases) ลงมือถือก่อน แล้วเลือกไฟล์และกดอัปโหลด ใช้เวลาประมาณ 2–5 นาที ให้เปิดหน้านี้ค้างไว้และวางมือถือใกล้บอร์ด ถ้าอัปไม่ครบ บอร์ดจะใช้เฟิร์มแวร์เดิมต่อ ไม่เสีย</p>
+<input type="file" id="f" accept=".bin"><button id="b" type="button" data-t="อัปโหลด">อัปโหลด</button>
+<div class="bar"><i id="p"></i></div><div id="m"></div>
+<button class="s" id="x" type="button" data-t="กลับหน้าเกจ">กลับหน้าเกจ</button></div>
+<script>
+(function () {
+  var P = null; try { P = window.parent !== window && window.parent.TGBLE ? window.parent : null; } catch (e) {}
+  if (!P) { location.replace("./"); return; }
+  var $ = function (id) { return document.getElementById(id); }, en = P.document.documentElement.lang === "en";
+  var EN = { "อัปเดตเฟิร์มแวร์ผ่านบลูทูธ": "Firmware update over Bluetooth", "เฟิร์มแวร์ที่ใช้อยู่:": "Current firmware:", "อัปโหลด": "Upload", "กลับหน้าเกจ": "Back to the gauge",
+    "ดาวน์โหลดไฟล์ .bin ของรุ่น Lite จาก GitHub (Releases) ลงมือถือก่อน แล้วเลือกไฟล์และกดอัปโหลด ใช้เวลาประมาณ 2–5 นาที ให้เปิดหน้านี้ค้างไว้และวางมือถือใกล้บอร์ด ถ้าอัปไม่ครบ บอร์ดจะใช้เฟิร์มแวร์เดิมต่อ ไม่เสีย":
+      "Download the Lite .bin from GitHub (Releases) to the phone first, then pick it and tap upload. It takes about 2–5 minutes; keep this page open and the phone near the board. If the upload stops, the board keeps its old firmware." };
+  var T = function (s) { return en && EN[s] ? EN[s] : s; };
+  if (en) { document.documentElement.lang = "en"; document.querySelectorAll("[data-t]").forEach(function (e) { e.textContent = T(e.dataset.t); }); }
+  var m = $("m");
+  function say(t, c) { m.textContent = t; m.className = c || ""; }
+  $("x").onclick = function () { P.TGOV.close(false); };
+  P.fetch("/api/version", { cache: "no-store" }).then(function (r) { return r.json(); }).then(function (j) { $("v").textContent = j.build; }).catch(function () {});
+  $("b").onclick = function () {
+    var x = $("f").files[0];
+    if (!x) { say(en ? "No file picked" : "ยังไม่ได้เลือกไฟล์", "bad"); return; }
+    if (!/\.bin$/i.test(x.name)) { say(en ? "It must be a .bin file" : "ต้องเป็นไฟล์ .bin", "bad"); return; }
+    if (P.TGBLE.state !== "on") { say(en ? "Connect the gauge over Bluetooth first" : "เชื่อมต่อเกจทางบลูทูธก่อน", "bad"); return; }
+    $("b").disabled = true; $("x").disabled = true; say(en ? "Uploading… keep this page open" : "กำลังอัป… อย่าปิดหน้านี้");
+    x.arrayBuffer().then(function (buf) {
+      return P.TGBLE.ota(buf, function (q, s) {
+        $("p").style.width = Math.round(q * 100) + "%";
+        var left = q > 0.02 ? Math.round(s / q - s) : 0;
+        say((en ? "Uploading " : "กำลังอัป ") + Math.round(q * 100) + "%" + (left ? (en ? " · about " + Math.ceil(left / 60) + " min left" : " · เหลือราว " + Math.ceil(left / 60) + " นาที") : ""));
+      });
+    }).then(function () {
+      $("p").style.width = "100%";
+      say(en ? "Done ✓ The board is restarting; the app reconnects by itself" : "สำเร็จ ✓ บอร์ดกำลังรีสตาร์ท แอปจะต่อใหม่เอง", "ok");
+      $("x").disabled = false;
+    }).catch(function (e) {
+      say((en ? "Failed: " : "ไม่สำเร็จ: ") + (e && e.message || e) + (en ? " · the old firmware still works" : " · เฟิร์มแวร์เดิมยังใช้ได้"), "bad");
+      $("b").disabled = false; $("x").disabled = false;
+    });
+  };
+})();
+</script></body></html>

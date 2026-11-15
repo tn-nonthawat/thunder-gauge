@@ -7,7 +7,10 @@
 #include <WebServer.h>
 #include <Update.h>
 
-extern WebServer server;
+#ifndef TG_SERVER_T
+#define TG_SERVER_T WebServer   // the Lite .ino sets TgServer (tg_server.h: also answers Bluetooth requests)
+#endif
+extern TG_SERVER_T server;
 bool otaBusy = false;
 bool otaSawFirst = false;      // have we checked the magic byte on the real first data chunk yet?
 String otaErr;

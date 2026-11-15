@@ -13,12 +13,18 @@
 // READ ONLY toward the ECU: the wiring check only uses the existing /api/status and /api/wake.
 //
 // Depends on kline_tester.h (jsonEsc, sendJson, logLine) - include this AFTER it in the .ino.
+// Bluetooth (Lite only, #define TG_BLE before including): step 2 also asks the 6-digit Bluetooth pairing PIN (pin=,
+// 123456 until set). Changing it restarts the board. Phones paired before keep working (the bond stays).
+// Optional hooks the .ino may define: suShortPress() = BOOT pressed briefly, suFactoryHook() = just before the BOOT reset.
 #pragma once
 #include <WiFi.h>
 #include <LittleFS.h>
 #include <WebServer.h>
 
-extern WebServer server;
+#ifndef TG_SERVER_T
+#define TG_SERVER_T WebServer   // the Lite .ino sets TgServer (tg_server.h: also answers Bluetooth requests)
+#endif
+extern TG_SERVER_T server;
 extern bool fsOk;
 extern const char* AP_SSID;
 extern const char* AP_PASS;
@@ -28,6 +34,9 @@ static const int SU_BTN = 9;                      // BOOT button on the C3 Super
 bool suDone = false;
 bool suSubSet = false;                            // false = never set by the wizard (older setup.txt): the gauge keeps its own default line
 String suName, suSub, suSsid, suPass, suTheme = "raceline", suFace = "classic", suLang = "th", suIcon = "bolt", suModel = "auto", suGear = "man";
+String suPin = "123456";                         // Bluetooth builds: the pairing PIN (never sent back)
+void suShortPress() __attribute__((weak));
+void suFactoryHook() __attribute__((weak));
 uint32_t suVer = 0;                               // bumps on every save so phones re-sync the look
 uint32_t suRestartAt = 0, suBtnSince = 0;
 
@@ -57,6 +66,7 @@ void suLoad() {
     else if (k == "icon") suIcon = v;
     else if (k == "model") suModel = v;
     else if (k == "gear") suGear = v;
+    else if (k == "pin" && v.length() == 6) suPin = v;
     else if (k == "ver") suVer = v.toInt();
   }
   f.close();
@@ -64,8 +74,8 @@ void suLoad() {
 bool suSave() {
   if (!fsOk) return false;
   File f = LittleFS.open("/setup.tmp", "w"); if (!f) return false;
-  f.printf("done=%d\nname=%s\n%s%s%sssid=%s\npass=%s\ntheme=%s\nface=%s\nlang=%s\nicon=%s\nmodel=%s\ngear=%s\nver=%lu\n", suDone ? 1 : 0,
-           suName.c_str(), suSubSet ? "sub=" : "", suSubSet ? suSub.c_str() : "", suSubSet ? "\n" : "", suSsid.c_str(), suPass.c_str(), suTheme.c_str(), suFace.c_str(), suLang.c_str(), suIcon.c_str(), suModel.c_str(), suGear.c_str(),
+  f.printf("done=%d\nname=%s\n%s%s%sssid=%s\npass=%s\ntheme=%s\nface=%s\nlang=%s\nicon=%s\nmodel=%s\ngear=%s\npin=%s\nver=%lu\n", suDone ? 1 : 0,
+           suName.c_str(), suSubSet ? "sub=" : "", suSubSet ? suSub.c_str() : "", suSubSet ? "\n" : "", suSsid.c_str(), suPass.c_str(), suTheme.c_str(), suFace.c_str(), suLang.c_str(), suIcon.c_str(), suModel.c_str(), suGear.c_str(), suPin.c_str(),
            (unsigned long)suVer);
   f.close();
   LittleFS.remove(SETUP_FILE);
@@ -135,6 +145,9 @@ input:focus{outline:2px solid var(--a2);border-color:transparent}
 <label for="ss" data-t="ชื่อ Wi-Fi">ชื่อ Wi-Fi</label><input id="ss" maxlength="32" autocomplete="off" autocapitalize="off">
 <label for="pw" data-t="รหัสผ่านใหม่ (8 ตัวขึ้นไป)">รหัสผ่านใหม่ (8 ตัวขึ้นไป)</label><input id="pw" maxlength="63" autocomplete="new-password" autocapitalize="off">
 <p class="note" id="pwk" hidden data-t="เว้นว่างไว้ = ใช้รหัสเดิม">เว้นว่างไว้ = ใช้รหัสเดิม</p>
+<div id="blk" hidden><p class="note" data-t="บลูทูธ: แอป Thunder Gauge (Chrome บน Android) ต่อเกจทางบลูทูธได้เสมอ และอ่านความเร็วจาก GPS มือถือ ใส่ PIN นี้ตอนจับคู่ครั้งแรก พอแอปต่อแล้ว Wi-Fi ของเกจจะปิดเอง (กดปุ่ม BOOT สั้นๆ เพื่อเปิด Wi-Fi อีกครั้ง)">บลูทูธ: แอป Thunder Gauge (Chrome บน Android) ต่อเกจทางบลูทูธได้เสมอ และอ่านความเร็วจาก GPS มือถือ ใส่ PIN นี้ตอนจับคู่ครั้งแรก พอแอปต่อแล้ว Wi-Fi ของเกจจะปิดเอง (กดปุ่ม BOOT สั้นๆ เพื่อเปิด Wi-Fi อีกครั้ง)</p>
+<label for="pn" data-t="รหัส PIN จับคู่บลูทูธ (ตัวเลข 6 หลัก)">รหัส PIN จับคู่บลูทูธ (ตัวเลข 6 หลัก)</label><input id="pn" maxlength="6" inputmode="numeric" autocomplete="off">
+<p class="note" id="pnk" hidden data-t="เว้นว่างไว้ = ใช้รหัสเดิม">เว้นว่างไว้ = ใช้รหัสเดิม</p></div>
 <p class="err" id="e1"></p>
 </section>
 
@@ -159,9 +172,9 @@ static const char SETUP_PAGE_B[] PROGMEM = R"HTML(<div class="nav" style="margin
 </div><script>
 (function(){
 const $=id=>document.getElementById(id);
-const EN={"ระบบเกียร์":"Gearbox","เกียร์ธรรมดา / กึ่งออโต้ (มีเกียร์ว่าง N)":"Manual / semi-auto (has neutral N)","เกียร์ออโต้ (สกู๊ตเตอร์ ไม่มีเกียร์ว่าง)":"Automatic (scooter, no neutral)","รุ่นรถ / ตารางข้อมูลของกล่อง ECU":"Bike model / ECU data table","อัตโนมัติ: บอร์ดลองถามกล่องทีละตารางแล้วใช้ตารางแรกที่ตอบ ทดสอบกับรถจริงแล้วเฉพาะ Wave 110i รุ่นอื่นค่าบางตัวอาจไม่ตรง":"Auto: the board asks the ECU table by table and uses the first that answers. Only the Wave 110i is tested on a real bike; on other models some readings may be off.","ตรวจหาอัตโนมัติ (แนะนำ)":"Detect automatically (recommended)","ตาราง 0x67 · ทดลอง":"Table 0x67 · experimental","ตาราง 0x10 (CBR และรุ่นใหญ่) · ทดลอง":"Table 0x10 (CBR, big bikes) · experimental","ตาราง 0x11 · ทดลอง":"Table 0x11 · experimental","ตาราง 0x13 · ทดลอง":"Table 0x13 · experimental","Wave 110i / 125i · ตาราง 0x17":"Wave 110i / 125i · table 0x17","ไอคอนแอป (บนหัวหน้าเกจ และตอนเพิ่มลงหน้าจอโฮม)":"App icon (gauge header and home-screen shortcut)","สายฟ้าส้ม":"Orange bolt","ธันเดอร์":"Thunder","หน้าปัด":"Dial","ตัวอักษร":"Letter","รูปของคุณ":"Your picture","ตั้งค่าเกจครั้งแรก":"First-time setup","ตั้งค่าครั้งเดียว แก้ภายหลังได้ที่หน้าตั้งค่า (ปุ่มเฟือง)":"Set once. Change it later in Settings (gear button).","1 · ชื่อเกจและภาษา":"1 · Name and language","ชื่อสมาร์ทเกจของคุณ (แสดงบนหัวหน้าเกจ)":"Your gauge's name (shown at the top of the gauge)","คำใต้ชื่อ (เว้นว่างได้ ถ้าไม่ใส่จะไม่แสดง)":"Line under the name (optional, left empty = none)","2 · Wi-Fi ของเกจ":"2 · Gauge Wi-Fi","ชื่อและรหัสที่มือถือใช้ต่อเข้าเกจ เปลี่ยนจากค่าเริ่มต้นเพื่อไม่ให้คนอื่นเข้าได้":"The name and password your phone uses to join the gauge. Change the default so others can't join.","ชื่อ Wi-Fi":"Wi-Fi name","รหัสผ่านใหม่ (8 ตัวขึ้นไป)":"New password (8+ characters)","เว้นว่างไว้ = ใช้รหัสเดิม":"Leave empty to keep the current one","3 · เช็คการต่อสาย":"3 · Wiring check","บิดกุญแจ ON (ไม่ต้องติดเครื่อง) แล้วรอสักครู่":"Turn the key ON (engine off) and wait a moment.","สาย K-Line":"K-Line wire","กล่อง ECU":"ECU","เซ็นเซอร์เอียง MPU-6050":"MPU-6050 lean sensor","ลองปลุก ECU อีกครั้ง":"Wake the ECU again","ข้ามขั้นนี้ได้ถ้ายังไม่ได้ต่อเข้ารถ":"You can skip this if it's not on the bike yet.","เสร็จแล้ว":"All set","ย้อนกลับ":"Back","ถัดไป":"Next","ข้าม":"Skip","บันทึกและเริ่มใช้":"Save and start","เปิดหน้าเกจ":"Open the gauge","ใส่ชื่อ Wi-Fi":"Enter a Wi-Fi name","รหัสต้องมี 8–63 ตัว":"The password needs 8–63 characters","บันทึกไม่สำเร็จ ลองอีกครั้ง":"Saving failed, try again","ปกติ ✓":"OK ✓","ไม่มีไฟ ✗":"No signal ✗","แกว่ง":"Unstable","ตอบกลับ ✓":"Answering ✓","ยังไม่ตอบ":"No answer","กำลังปลุก…":"Waking…","ไม่พบ ✗":"Not found ✗","จับได้ ✓":"Fix ✓","รอดาวเทียม":"Searching","มีไฟรอที่สาย ต่อถูกแล้ว":"Line is powered, wired right","ไม่มีไฟ: เช็คไฟเลี้ยงโมดูล K-Line และสายเข้า ECU":"No power: check the K-Line module supply and the ECU wire","ไฟไม่นิ่ง: เช็คสายกราวด์และขั้วต่อ":"Unsteady: check the ground and connectors","อ่านค่าได้ พร้อมใช้":"Reading data, ready","บิดกุญแจ ON แล้วกดลองปลุกอีกครั้ง":"Key ON, then tap Wake again","เช็คสาย SDA→GPIO4, SCL→GPIO10":"Check SDA→GPIO4, SCL→GPIO10","ต้องอยู่กลางแจ้ง อาจใช้เวลา 1–5 นาที":"Needs open sky, may take 1–5 minutes","ดวง":"sats"};
+const EN={"บลูทูธ: แอป Thunder Gauge (Chrome บน Android) ต่อเกจทางบลูทูธได้เสมอ และอ่านความเร็วจาก GPS มือถือ ใส่ PIN นี้ตอนจับคู่ครั้งแรก พอแอปต่อแล้ว Wi-Fi ของเกจจะปิดเอง (กดปุ่ม BOOT สั้นๆ เพื่อเปิด Wi-Fi อีกครั้ง)":"Bluetooth: the Thunder Gauge app (Chrome on Android) can always reach the gauge over Bluetooth and reads road speed from the phone's GPS. Enter this PIN when pairing the first time. Once the app is connected the gauge turns its Wi-Fi off (press BOOT briefly to turn it on again)","รหัส PIN จับคู่บลูทูธ (ตัวเลข 6 หลัก)":"Bluetooth pairing PIN (6 digits)","PIN ต้องเป็นตัวเลข 6 หลัก":"The PIN must be 6 digits","เกจกำลังรีสตาร์ท แอปจะต่อบลูทูธกลับเองในไม่กี่วินาที มือถือเครื่องนี้ไม่ต้องจับคู่ใหม่":"The gauge is restarting; the app reconnects over Bluetooth in a few seconds. This phone does not need to pair again.","ระบบเกียร์":"Gearbox","เกียร์ธรรมดา / กึ่งออโต้ (มีเกียร์ว่าง N)":"Manual / semi-auto (has neutral N)","เกียร์ออโต้ (สกู๊ตเตอร์ ไม่มีเกียร์ว่าง)":"Automatic (scooter, no neutral)","รุ่นรถ / ตารางข้อมูลของกล่อง ECU":"Bike model / ECU data table","อัตโนมัติ: บอร์ดลองถามกล่องทีละตารางแล้วใช้ตารางแรกที่ตอบ ทดสอบกับรถจริงแล้วเฉพาะ Wave 110i รุ่นอื่นค่าบางตัวอาจไม่ตรง":"Auto: the board asks the ECU table by table and uses the first that answers. Only the Wave 110i is tested on a real bike; on other models some readings may be off.","ตรวจหาอัตโนมัติ (แนะนำ)":"Detect automatically (recommended)","ตาราง 0x67 · ทดลอง":"Table 0x67 · experimental","ตาราง 0x10 (CBR และรุ่นใหญ่) · ทดลอง":"Table 0x10 (CBR, big bikes) · experimental","ตาราง 0x11 · ทดลอง":"Table 0x11 · experimental","ตาราง 0x13 · ทดลอง":"Table 0x13 · experimental","Wave 110i / 125i · ตาราง 0x17":"Wave 110i / 125i · table 0x17","ไอคอนแอป (บนหัวหน้าเกจ และตอนเพิ่มลงหน้าจอโฮม)":"App icon (gauge header and home-screen shortcut)","สายฟ้าส้ม":"Orange bolt","ธันเดอร์":"Thunder","หน้าปัด":"Dial","ตัวอักษร":"Letter","รูปของคุณ":"Your picture","ตั้งค่าเกจครั้งแรก":"First-time setup","ตั้งค่าครั้งเดียว แก้ภายหลังได้ที่หน้าตั้งค่า (ปุ่มเฟือง)":"Set once. Change it later in Settings (gear button).","1 · ชื่อเกจและภาษา":"1 · Name and language","ชื่อสมาร์ทเกจของคุณ (แสดงบนหัวหน้าเกจ)":"Your gauge's name (shown at the top of the gauge)","คำใต้ชื่อ (เว้นว่างได้ ถ้าไม่ใส่จะไม่แสดง)":"Line under the name (optional, left empty = none)","2 · Wi-Fi ของเกจ":"2 · Gauge Wi-Fi","ชื่อและรหัสที่มือถือใช้ต่อเข้าเกจ เปลี่ยนจากค่าเริ่มต้นเพื่อไม่ให้คนอื่นเข้าได้":"The name and password your phone uses to join the gauge. Change the default so others can't join.","ชื่อ Wi-Fi":"Wi-Fi name","รหัสผ่านใหม่ (8 ตัวขึ้นไป)":"New password (8+ characters)","เว้นว่างไว้ = ใช้รหัสเดิม":"Leave empty to keep the current one","3 · เช็คการต่อสาย":"3 · Wiring check","บิดกุญแจ ON (ไม่ต้องติดเครื่อง) แล้วรอสักครู่":"Turn the key ON (engine off) and wait a moment.","สาย K-Line":"K-Line wire","กล่อง ECU":"ECU","เซ็นเซอร์เอียง MPU-6050":"MPU-6050 lean sensor","ลองปลุก ECU อีกครั้ง":"Wake the ECU again","ข้ามขั้นนี้ได้ถ้ายังไม่ได้ต่อเข้ารถ":"You can skip this if it's not on the bike yet.","เสร็จแล้ว":"All set","ย้อนกลับ":"Back","ถัดไป":"Next","ข้าม":"Skip","บันทึกและเริ่มใช้":"Save and start","เปิดหน้าเกจ":"Open the gauge","ใส่ชื่อ Wi-Fi":"Enter a Wi-Fi name","รหัสผ่าน Wi-Fi ต้องมี 8–63 ตัว":"The Wi-Fi password needs 8–63 characters","บันทึกไม่สำเร็จ ลองอีกครั้ง":"Saving failed, try again","ปกติ ✓":"OK ✓","ไม่มีไฟ ✗":"No signal ✗","แกว่ง":"Unstable","ตอบกลับ ✓":"Answering ✓","ยังไม่ตอบ":"No answer","กำลังปลุก…":"Waking…","ไม่พบ ✗":"Not found ✗","จับได้ ✓":"Fix ✓","รอดาวเทียม":"Searching","มีไฟรอที่สาย ต่อถูกแล้ว":"Line is powered, wired right","ไม่มีไฟ: เช็คไฟเลี้ยงโมดูล K-Line และสายเข้า ECU":"No power: check the K-Line module supply and the ECU wire","ไฟไม่นิ่ง: เช็คสายกราวด์และขั้วต่อ":"Unsteady: check the ground and connectors","อ่านค่าได้ พร้อมใช้":"Reading data, ready","บิดกุญแจ ON แล้วกดลองปลุกอีกครั้ง":"Key ON, then tap Wake again","เช็คสาย SDA→GPIO4, SCL→GPIO10":"Check SDA→GPIO4, SCL→GPIO10","ต้องอยู่กลางแจ้ง อาจใช้เวลา 1–5 นาที":"Needs open sky, may take 1–5 minutes","ดวง":"sats"};
 let lang="th";const T=s=>lang==="en"&&EN[s]?EN[s]:s;
-const cfg={name:"",sub:"",ssid:"",pass:"",lang:"th",icon:"bolt",img:"",model:"auto",gear:"man"};let orig={},full=!!$("r-gps"),step=0,timer=0;   // theme + dial face: set later in the gauge's Settings
+const cfg={name:"",sub:"",ssid:"",pass:"",lang:"th",icon:"bolt",img:"",model:"auto",gear:"man",pin:""};let orig={},full=!!$("r-gps"),step=0,timer=0;   // theme + dial face: set later in the gauge's Settings
 function icl(){const c=(Array.from($("nm").value||"").find(c=>!/[\sเแโใไ<&>"]/.test(c))||"T").toUpperCase();$("icl").textContent=c;}
 function icImg(u){$("icu").innerHTML='<img alt="" src="'+u+'">';}
 $("icf").addEventListener("change",e=>{const f=e.target.files&&e.target.files[0];e.target.value="";if(!f)return;const u=URL.createObjectURL(f),im=new Image();im.onload=()=>{const c=document.createElement("canvas"),z=Math.min(im.naturalWidth,im.naturalHeight),x=c.getContext("2d");c.width=c.height=180;x.fillStyle="#10161e";x.fillRect(0,0,180,180);x.drawImage(im,(im.naturalWidth-z)/2,(im.naturalHeight-z)/2,z,z,0,0,180,180);URL.revokeObjectURL(u);cfg.img=c.toDataURL("image/jpeg",.85);icImg(cfg.img);pick("icon","custom");};im.src=u;});
@@ -183,19 +196,21 @@ d.fix?set("gp","ok","จับได้ ✓",d.sats+" "+T("ดวง")):set("gp"
 $("wake").onclick=()=>{set("ec","mu","กำลังปลุก…");$("wake").disabled=true;J("/api/wake").then(j=>j.awake?set("ec","ok","ตอบกลับ ✓","อ่านค่าได้ พร้อมใช้"):set("ec","wn","ยังไม่ตอบ","บิดกุญแจ ON แล้วกดลองปลุกอีกครั้ง")).catch(()=>set("ec","wn","ยังไม่ตอบ")).then(()=>$("wake").disabled=false);};
 $("bk").onclick=()=>{step--;nav();};
 $("nx").onclick=()=>{
-if(step===1){const s=$("ss").value.trim(),p=$("pw").value;if(!s){$("e1").textContent=T("ใส่ชื่อ Wi-Fi");return;}
-if((p.length||!orig.done)&&(p.length<8||p.length>63)){$("e1").textContent=T("รหัสต้องมี 8–63 ตัว");return;}$("e1").textContent="";}
+if(step===1){const s=$("ss").value.trim(),p=$("pw").value;const bad=(id,m)=>{$("e1").textContent=T(m);$(id).focus();$(id).scrollIntoView({block:"center"});};if(!s){bad("ss","ใส่ชื่อ Wi-Fi");return;}
+if((p.length||!orig.done)&&(p.length<8||p.length>63)){bad("pw","รหัสผ่าน Wi-Fi ต้องมี 8–63 ตัว");return;}
+if(orig.ble){const q=$("pn").value.trim();if((q.length||!orig.done)&&!/^[0-9]{6}$/.test(q)){bad("pn","PIN ต้องเป็นตัวเลข 6 หลัก");return;}}$("e1").textContent="";}
 if(step<2){step++;nav();return;}save();};
-function save(){$("e9").textContent="";cfg.model=$("md").value;cfg.name=$("nm").value.trim();cfg.sub=$("sb").value.trim();cfg.ssid=$("ss").value.trim();cfg.pass=$("pw").value;$("nx").disabled=true;
+function save(){$("e9").textContent="";cfg.model=$("md").value;cfg.name=$("nm").value.trim();cfg.sub=$("sb").value.trim();cfg.ssid=$("ss").value.trim();cfg.pass=$("pw").value;cfg.pin=$("pn").value.trim();$("nx").disabled=true;
 fetch("/api/setup/save",{method:"POST",body:new URLSearchParams(cfg.icon==="custom"?cfg:Object.assign({},cfg,{img:""}))}).then(r=>r.json()).then(j=>{if(!j.ok)throw 0;
 try{localStorage.setItem("tg-lang",cfg.lang);}catch(e){}
 step=3;nav();clearInterval(timer);
-if(j.restart){$("dm").innerHTML=(lang==="en"?"The gauge is restarting with the new Wi-Fi. On your phone, join <b>":"เกจกำลังรีสตาร์ทด้วย Wi-Fi ใหม่ ให้มือถือต่อ Wi-Fi ชื่อ <b>")+esc(cfg.ssid)+(lang==="en"?"</b>, then open <b>http://192.168.4.1</b>":"</b> แล้วเปิด <b>http://192.168.4.1</b>")+`<br><br><button class="b go" type="button" onclick="location.href='/'">${T("เปิดหน้าเกจ")}</button>`;}
+if(j.restart&&window.TGBACK){$("dm").innerHTML=T("เกจกำลังรีสตาร์ท แอปจะต่อบลูทูธกลับเองในไม่กี่วินาที มือถือเครื่องนี้ไม่ต้องจับคู่ใหม่")+`<br><br><button class="b go" type="button" onclick="TGBACK(false)">${T("เปิดหน้าเกจ")}</button>`;}
+else if(j.restart){$("dm").innerHTML=(lang==="en"?"The gauge is restarting with the new Wi-Fi. On your phone, join <b>":"เกจกำลังรีสตาร์ทด้วย Wi-Fi ใหม่ ให้มือถือต่อ Wi-Fi ชื่อ <b>")+esc(cfg.ssid)+(lang==="en"?"</b>, then open <b>http://192.168.4.1</b>":"</b> แล้วเปิด <b>http://192.168.4.1</b>")+`<br><br><button class="b go" type="button" onclick="location.href='/'">${T("เปิดหน้าเกจ")}</button>`;}
 else{$("dm").innerHTML=`<button class="b go" type="button" onclick="location.href='/'">${T("เปิดหน้าเกจ")}</button>`;}
 }).catch(()=>{$("nx").disabled=false;$("e9").textContent=T("บันทึกไม่สำเร็จ ลองอีกครั้ง");});}
 const esc=s=>s.replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 $("nm").addEventListener("input",icl);
-J("/api/setup").then(j=>{orig=j;$("nm").value=j.name||"";icl();orig.hasImg=j.icon==="custom";if(j.model)$("md").value=j.model;pick("gear",j.gear==="auto"?"auto":"man");pick("icon",["bolt","thunder","dial","letter","custom"].includes(j.icon)?j.icon:"bolt");if(j.icon==="custom")fetch("/api/setup/icon").then(r=>r.text()).then(t=>{if(t.startsWith("data:image/"))icImg(t);}).catch(()=>{});$("sb").value=j.sub||"";$("ss").value=j.ssid||"";$("pwk").hidden=!j.done;
+J("/api/setup").then(j=>{orig=j;$("nm").value=j.name||"";icl();orig.hasImg=j.icon==="custom";if(j.model)$("md").value=j.model;pick("gear",j.gear==="auto"?"auto":"man");if(j.ble){$("blk").hidden=false;$("pnk").hidden=!j.done;}pick("icon",["bolt","thunder","dial","letter","custom"].includes(j.icon)?j.icon:"bolt");if(j.icon==="custom")fetch("/api/setup/icon").then(r=>r.text()).then(t=>{if(t.startsWith("data:image/"))icImg(t);}).catch(()=>{});$("sb").value=j.sub||"";$("ss").value=j.ssid||"";$("pwk").hidden=!j.done;
 lang=j.lang==="en"?"en":"th";pick("lang",lang);tr();}).catch(()=>{pick("lang","th");pick("icon","bolt");pick("gear","man");tr();});
 })();
 </script></body></html>)HTML";
@@ -219,7 +234,12 @@ void suApiGet() {
 #else
   const char* full = "false";
 #endif
-  sendJson(String("{\"done\":") + (suDone ? "true" : "false") + ",\"full\":" + full +
+#ifdef TG_BLE
+  const char* ble = "true";
+#else
+  const char* ble = "false";
+#endif
+  sendJson(String("{\"done\":") + (suDone ? "true" : "false") + ",\"full\":" + full + ",\"ble\":" + ble +
            ",\"name\":\"" + jsonEsc(suName) + "\",\"sub\":" + (suSubSet ? String("\"") + jsonEsc(suSub) + "\"" : String("null")) + ",\"ssid\":\"" + jsonEsc(suSsid) +
            "\",\"theme\":\"" + jsonEsc(suTheme) + "\",\"face\":\"" + jsonEsc(suFace) + "\",\"lang\":\"" + jsonEsc(suLang) + "\",\"icon\":\"" + jsonEsc(suIcon) + "\",\"model\":\"" + jsonEsc(suModel) + "\",\"gear\":\"" + jsonEsc(suGear) +
            "\",\"ver\":" + String(suVer) + "}");
@@ -238,6 +258,14 @@ void suApiSave() {
   if (!ss.length() || pw.length() < 8 || pw.length() > 63) { sendJson("{\"ok\":false,\"err\":\"wifi\"}"); return; }
   String th = suClean(server.arg("theme"), 12), fc = suClean(server.arg("face"), 10), lg = suClean(server.arg("lang"), 2);   // the wizard no longer sends theme/face: kept as they are
   bool wifiChanged = ss != suSsid || pw != suPass;
+#ifdef TG_BLE
+  String pn = server.arg("pin");
+  if (!pn.length() && suDone) pn = suPin;           // empty = keep the current PIN
+  bool pinOk = pn.length() == 6; for (char c : pn) if (c < '0' || c > '9') pinOk = false;
+  if (!pinOk) { sendJson("{\"ok\":false,\"err\":\"pin\"}"); return; }
+  if (pn != suPin) wifiChanged = true;              // the PIN only changes at boot: restart
+  suPin = pn;
+#endif
   suName = suClean(server.arg("name"), 96);         // the page caps it at 24 characters (Thai = 3 bytes each)
   suSub = suClean(server.arg("sub"), 160); suSubSet = true;          // line under the name, page caps it at 40 characters
   suSsid = ss; suPass = pw;
@@ -286,9 +314,13 @@ void suLoop() {
   if (digitalRead(SU_BTN) == LOW) {                 // BOOT held 3 s = back to factory Wi-Fi + wizard
     if (!suBtnSince) suBtnSince = millis();
     else if (millis() - suBtnSince > 3000) {
+      if (suFactoryHook) suFactoryHook();
       if (fsOk) { LittleFS.remove(SETUP_FILE); LittleFS.remove("/ui.json"); LittleFS.remove("/ui.ver"); LittleFS.remove("/icon.txt"); }   // also the shared screen setup
       logLine("กด BOOT ค้าง: ล้างค่าตั้งเกจ กลับเป็นค่าเริ่มต้น");
       delay(200); ESP.restart();
     }
-  } else suBtnSince = 0;
+  } else {
+    if (suBtnSince && millis() - suBtnSince > 60 && millis() - suBtnSince < 1500 && suShortPress) suShortPress();
+    suBtnSince = 0;
+  }
 }

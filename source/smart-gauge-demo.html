@@ -137,7 +137,7 @@ a.btn { text-decoration: none; display: inline-flex; align-items: center; justif
 
 /* dials */
 .dial { position: relative; margin: 0; background: var(--panel); border: 1px solid var(--line); border-radius: var(--r); padding: 10px 6px 8px; display: flex; flex-direction: column; align-items: center; gap: 2px; min-width: 0; }
-/*FULL{*/.gps-badge { position: absolute; top: 7px; left: 8px; display: flex; align-items: center; gap: 4px; font: 600 10px var(--font-display); color: var(--dim); background: color-mix(in srgb, var(--panel-2) 82%, transparent); border: 1px solid var(--line); border-radius: 99px; padding: 2px 6px 2px 5px; line-height: 1; }
+/*SPD{*/.gps-badge { position: absolute; top: 7px; left: 8px; display: flex; align-items: center; gap: 4px; font: 600 10px var(--font-display); color: var(--dim); background: color-mix(in srgb, var(--panel-2) 82%, transparent); border: 1px solid var(--line); border-radius: 99px; padding: 2px 6px 2px 5px; line-height: 1; }
 .gps-badge .gps-ic { width: 11px; height: 11px; flex: none; }
 .gps-badge .led { width: 7px; height: 7px; border-radius: 50%; background: var(--dim); flex: none; transition: background .3s; }
 .gps-badge .led.ok { background: var(--ok); box-shadow: 0 0 5px var(--ok); }
@@ -151,7 +151,7 @@ a.btn { text-decoration: none; display: inline-flex; align-items: center; justif
 .gps-note.crit { color: var(--crit); background: color-mix(in srgb, var(--crit) 12%, var(--panel)); border: 1px solid color-mix(in srgb, var(--crit) 40%, var(--line)); }
 .gps-note.crit::before { background: var(--crit); box-shadow: 0 0 6px var(--crit); }
 .gps-note.warn { color: var(--warn); background: color-mix(in srgb, var(--warn) 12%, var(--panel)); border: 1px solid color-mix(in srgb, var(--warn) 40%, var(--line)); }
-.gps-note.warn::before { background: var(--warn); box-shadow: 0 0 6px var(--warn); }/*}FULL*/
+.gps-note.warn::before { background: var(--warn); box-shadow: 0 0 6px var(--warn); }/*}SPD*/
 .dial figcaption { font-size: 12.5px; color: var(--dim); letter-spacing: .04em; }
 .gauge { width: 100%; display: block; }
 .gauge text { font-family: var(--font-display); fill: var(--dim); }
@@ -473,16 +473,16 @@ a.btn { text-decoration: none; display: inline-flex; align-items: center; justif
 .hex .ck { color: var(--accent-3); }
 
 /* race box */
-/*FULL{*/.timer { font-family: var(--font-display); font-size: 64px; font-weight: 700; line-height: 1; font-variant-numeric: tabular-nums; text-align: center; letter-spacing: .02em; }
+/*SPD{*/.timer { font-family: var(--font-display); font-size: 64px; font-weight: 700; line-height: 1; font-variant-numeric: tabular-nums; text-align: center; letter-spacing: .02em; }
 .timer small { font-size: 22px; color: var(--dim); margin-left: 4px; }
 .race-state { text-align: center; font-size: 14px; color: var(--dim); min-height: 1.5em; }
 .race-state.armed { color: var(--warn); } .race-state.run { color: var(--accent); } .race-state.done { color: var(--ok); }
 .race-live { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; text-align: center; }
 .race-live span { display: block; font-size: 11.5px; color: var(--dim); }
-.race-live b { font-family: var(--font-display); font-size: 20px; font-variant-numeric: tabular-nums; }/*}FULL*/
+.race-live b { font-family: var(--font-display); font-size: 20px; font-variant-numeric: tabular-nums; }/*}SPD*/
 .acts { display: flex; gap: 8px; flex-wrap: wrap; }
 .acts .btn { flex: 1 1 0; min-width: 90px; }
-/*FULL{*/.splits { display: flex; flex-direction: column; gap: 6px; }
+/*SPD{*/.splits { display: flex; flex-direction: column; gap: 6px; }
 .split { display: grid; grid-template-columns: 1fr auto auto; gap: 12px; align-items: baseline; padding: 9px 12px; background: var(--panel-2); border-radius: 10px; font-variant-numeric: tabular-nums; }
 .split span { font-size: 14px; }
 .split b { font-family: var(--font-display); font-size: 20px; }
@@ -491,7 +491,7 @@ a.btn { text-decoration: none; display: inline-flex; align-items: center; justif
 .hist { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
 .hist li { display: grid; grid-template-columns: 2.4em 1fr auto; gap: 10px; align-items: center; font-size: 13px; padding: 8px 12px; border: 1px solid var(--line); border-radius: 10px; font-variant-numeric: tabular-nums; }
 .hist li b { font-family: var(--font-display); }
-.hist li .best { color: var(--accent-3); }/*}FULL*/
+.hist li .best { color: var(--accent-3); }/*}SPD*/
 
 /* graphs */
 .strip { display: flex; flex-direction: column; gap: 2px; }
@@ -581,9 +581,10 @@ select, input[type="number"], input[type="text"] { font: 500 14px var(--font-dis
 .cpick input { width: 100%; height: 38px; padding: 2px; background: var(--bg); border: 1px solid var(--line); border-radius: 8px; cursor: pointer; }
 
 html.budget .motion { display: none !important; }
-/* Lite: the Wave 110i ECU sends no road speed and there is no GPS, so no speed dial, speed correction or timer tab */
-html.budget .no-lite, html.budget #tab-race, html.budget #v-race { display: none !important; }
-html.budget .tabs { grid-template-columns: repeat(4, 1fr); }
+/* Lite over Wi-Fi: the Wave 110i ECU sends no road speed and there is no GPS, so no speed dial, speed correction or timer tab.
+   The Lite phone app (Bluetooth, window.TG_GPS) takes road speed from the phone's own GPS and keeps them. */
+html.nospd .no-lite, html.nospd #tab-race, html.nospd #v-race { display: none !important; }
+html.nospd .tabs { grid-template-columns: repeat(4, 1fr); }
 /* "3 key readings" card (default next to the rpm dial in Lite) */
 .dial-side { display: flex; flex-direction: column; justify-content: space-evenly; gap: 6px; min-width: 0; background: var(--panel); border: 1px solid var(--line); border-radius: var(--r); padding: 10px 14px; }
 .dial-side div { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
@@ -652,7 +653,7 @@ html.budget .tabs { grid-template-columns: repeat(4, 1fr); }
       <button role="tab" id="tab-ride" data-v="ride">ขับขี่</button>
       <button role="tab" id="tab-tune" data-v="tune">เซ็นเซอร์</button>
       <button role="tab" id="tab-graph" data-v="graph">วิเคราะห์</button>
-<!--FULL{-->      <button role="tab" id="tab-race" data-v="race">จับเวลา</button><!--}FULL-->
+<!--SPD{-->      <button role="tab" id="tab-race" data-v="race">จับเวลา</button><!--}SPD-->
       <button role="tab" id="tab-sys" data-v="sys">เช็กโค้ด<i class="badge" id="dtc-badge"></i></button>
     </nav>
   </header>
@@ -670,7 +671,7 @@ html.budget .tabs { grid-template-columns: repeat(4, 1fr); }
       <div class="slotpick shiftpick" id="face-ctl"><label for="faces" id="face-lab">แบบหน้าปัด<select id="faces"><option value="sport">สปอร์ต</option><option value="classic">คลาสสิก</option><option value="mini">มินิมอล</option><option value="bar">แถบไฟ</option><option value="ring">วงแหวน</option><option value="half">ครึ่งวง</option><option value="seg">ดิจิทัล</option></select></label><label for="dl-nd" id="nd-row">ทรงเข็ม<select id="dl-nd"><option value="taper">เรียว</option><option value="arrow">ลูกศร</option><option value="line">เส้นบาง</option></select></label><label for="dl-rz">สีโซนรอบสูง<select id="dl-rz"><option value="crit">แดง</option><option value="warn">เหลือง</option><option value="acc">สีธีม</option></select></label><label for="dl-tk">ขีดสเกล<select id="dl-tk"><option value="1">แสดง</option><option value="0">ซ่อน</option></select></label></div>
       <div class="slotpick shiftpick" id="gear-ctl"><label for="gr-st">แบบการ์ดเกียร์<select id="gr-st"><option value="glow">เรืองแสง</option><option value="lamp">ไฟ N</option><option value="ring">วงแหวน</option><option value="halo">วงแหวนเรืองแสง</option><option value="htxt">ข้อความเรืองแสง</option><option value="seg">ดิจิทัล</option><option value="letter">ตัวอักษร</option><option value="plain">เรียบ</option></select></label></div>
       <div class="slotpick shiftpick" id="shift-ctl"><label for="shift">ไฟเตือนเปลี่ยนเกียร์ที่ <b id="shiftv">5,000 rpm</b></label><input type="range" id="shift" min="3500" max="9500" step="250" value="5000"><span class="note">ขี่ทั่วไปควรเปลี่ยนเกียร์ช่วง 4,000–5,500 rpm</span><label for="sl-st">แบบดวงไฟ<select id="sl-st"><option value="pill">แคปซูล</option><option value="bar">แถบต่อกัน</option><option value="dot">จุดกลม</option></select></label></div>
-<!--FULL{-->      <figure class="dial" data-card="speed"><span class="gps-badge" id="gps-badge" title="สถานะ GPS"><svg class="gps-ic" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 2a1 1 0 0 1 1 1v2.06a7 7 0 0 1 5.94 5.94H21a1 1 0 1 1 0 2h-2.06A7 7 0 0 1 13 18.94V21a1 1 0 1 1-2 0v-2.06A7 7 0 0 1 5.06 13H3a1 1 0 1 1 0-2h2.06A7 7 0 0 1 11 5.06V3a1 1 0 0 1 1-1zm0 5a5 5 0 1 0 0 10 5 5 0 0 0 0-10zm0 3a2 2 0 1 1 0 4 2 2 0 0 1 0-4z"/></svg><i class="led" id="gps-led"></i><small id="gps-txt"></small></span><svg class="gauge" id="g-spd" viewBox="0 0 200 168" role="img" aria-label="ความเร็ว"></svg><figcaption>ความเร็ว</figcaption></figure><!--}FULL-->
+<!--SPD{-->      <figure class="dial" data-card="speed"><span class="gps-badge" id="gps-badge" title="สถานะ GPS"><svg class="gps-ic" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 2a1 1 0 0 1 1 1v2.06a7 7 0 0 1 5.94 5.94H21a1 1 0 1 1 0 2h-2.06A7 7 0 0 1 13 18.94V21a1 1 0 1 1-2 0v-2.06A7 7 0 0 1 5.06 13H3a1 1 0 1 1 0-2h2.06A7 7 0 0 1 11 5.06V3a1 1 0 0 1 1-1zm0 5a5 5 0 1 0 0 10 5 5 0 0 0 0-10zm0 3a2 2 0 1 1 0 4 2 2 0 0 1 0-4z"/></svg><i class="led" id="gps-led"></i><small id="gps-txt"></small></span><svg class="gauge" id="g-spd" viewBox="0 0 200 168" role="img" aria-label="ความเร็ว"></svg><figcaption>ความเร็ว</figcaption></figure><!--}SPD-->
       <!-- dial (rpm) and "3 key readings" cards are generated per card (any number of copies), see dialMake / sideMake -->
       <div class="gearbox gs-glow" data-card="gear"><span>สถานะเกียร์</span><i class="glamp" aria-hidden="true"></i><b id="gear">N</b><svg class="gsv" viewBox="0 0 120 120" aria-hidden="true"></svg></div>
       <div class="shiftlight" data-card="shift"><div class="sl-hd"><span id="sl-t">ไฟเตือนเปลี่ยนเกียร์</span><b id="sl-at">5,000<small>rpm</small></b></div><div class="segs" id="segs"><i></i><i></i><i></i><i></i><i></i><i></i></div></div>
@@ -706,7 +707,7 @@ html.budget .tabs { grid-template-columns: repeat(4, 1fr); }
     <div class="tilegrp"><div class="tiles" id="tune-tiles"></div><div class="edp" id="edp-t" hidden></div><div class="tilehd"><button class="btn small" type="button" data-ed="t">จัดหน้า</button></div></div>
   </section>
 
-<!--FULL{-->  <!-- RACE -->
+<!--SPD{-->  <!-- RACE -->
   <section class="view" id="v-race" hidden>
     <div class="card">
       <div class="gps-note" id="race-gps" hidden></div>
@@ -731,7 +732,7 @@ html.budget .tabs { grid-template-columns: repeat(4, 1fr); }
       <ul class="hist" id="hist"></ul>
       <p class="note" id="race-note">จับเวลาจาก GPS 5 Hz และเทียบกับความเร็วจาก ECU ควรวิ่งในสนามหรือพื้นที่ปิดเท่านั้น</p>
     </div>
-  </section><!--}FULL-->
+  </section><!--}SPD-->
 
   <!-- GRAPH -->
   <section class="view" id="v-graph" hidden>
@@ -953,7 +954,10 @@ html.budget .tabs { grid-template-columns: repeat(4, 1fr); }
   const $ = id => document.getElementById(id);
   // budget build (no MPU-6050, no GPS): set window.TG_BUDGET = true before this script
   const BUDGET = !!window.TG_BUDGET;
+  // no road speed at all: Lite over Wi-Fi. The Lite phone app (window.TG_GPS) gets speed from the phone's GPS.
+  const NOSPD = BUDGET && !window.TG_GPS;
   document.documentElement.classList.toggle("budget", BUDGET);
+  document.documentElement.classList.toggle("nospd", NOSPD);
   if (BUDGET && $("race-note")) { $("race-note").textContent = "จับเวลาจากความเร็วของ ECU (รุ่นนี้ไม่มี GPS) แม่นน้อยกว่ารุ่นมี GPS ใช้เทียบกับรถตัวเองได้ · ควรวิ่งในสนามหรือพื้นที่ปิดเท่านั้น"; $("brand-sub").textContent = "Wave 110i · K-Line · รุ่นประหยัด"; }
   const rnd = (a, b) => a + Math.random() * (b - a);
   const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
@@ -1987,7 +1991,7 @@ html.budget .tabs { grid-template-columns: repeat(4, 1fr); }
     gear: ["สถานะเกียร์", "ขับขี่", [2, 3, 6]], shift: ["ไฟเตือนเปลี่ยนเกียร์", "ขับขี่", [3, 4, 6]], afr: ["แถบ AFR", "ขับขี่", [3, 4, 6]],
     side: ["ค่าหลัก 3 ค่า", "ชุดรวม", [2, 3, 6]], engine: ["ภาพรวมเครื่องยนต์", "ชุดรวม", [6]], motion: ["มุมเอียง · แรง G", "ชุดรวม", [6]] };
   Object.keys(TILE).forEach(k => { CAT["v:" + k] = [TILE[k].label, "ตัวเลข", [2, 3, 6]]; });
-  if (BUDGET) ["speed", "motion", "v:speed"].forEach(k => delete CAT[k]);      // Lite: no GPS, no MPU, no road speed
+  if (BUDGET) ["motion", ...(NOSPD ? ["speed", "v:speed"] : [])].forEach(k => delete CAT[k]);      // Lite: no MPU; no road speed unless the phone app gives GPS speed
   const SZ = { 2: "⅓", 3: "½", 4: "⅔", 6: "เต็ม" };
   // mini needle gauges for the "3 key readings (needles)" card: half circle, min on the left, max on the right
   // readings the two "3 key readings" cards can show; the rider picks 3 per card (saved on this phone)
@@ -2001,7 +2005,7 @@ html.budget .tabs { grid-template-columns: repeat(4, 1fr); }
     inj: { label: "เวลาเปิดหัวฉีด", u: "ms", lo: 0, hi: 8, z: [], v: () => S.inj, t: v => v.toFixed(2) },
     o2: { label: "O2 Sensor", u: "V", lo: 0, hi: 1, z: [], v: () => S.o2, t: v => v.toFixed(2), nd: () => !!window.ECU && !(window.ECU.o && window.ECU.o.length && window.ECU.o[0] <= 61) }
   };
-  if (BUDGET) delete SR.speed;                // Lite: no road speed
+  if (NOSPD) delete SR.speed;                 // Lite over Wi-Fi: no road speed
   // ---------- card copies: every card can be added again ----------
   // a card key is its type ("rpm", "side", "gear", "v:eot") for the first one and type~N for copies;
   // CC (tg-cardcfg) holds per-card settings: dial cards { r: reading, f: face }, "3 key readings" copies { st: look }
@@ -2122,7 +2126,7 @@ html.budget .tabs { grid-template-columns: repeat(4, 1fr); }
     ["inj", "inj", 54, 140, "เวลาเปิดหัวฉีด", 92, "#FF7A2F"], ["tps", "tps", 56, 284, "คันเร่ง (TPS)", 72, "#FFD166"],
     ["eot", "eot", 260, 228, "อุณหภูมิเครื่อง", 66, "#E06D53"], ["o2", "o2", 268, 132, "O2 Sensor", 66, "#2EE59D"],
     ["rpm", "rpm", 94, 354, "รอบเครื่อง", 74, "#F5B82E"], ["gear", null, 256, 330, "สถานะเกียร์", 72, "#2EE59D"],
-    ["batt", "batt", 20, 454, "แบตเตอรี่", 62, "#FF5252"]];
+    ["batt", "batt", 20, 474, "แบตเตอรี่", 62, "#FF5252"]];
   // injector spray: a glowing cone of fine streaks fanning from the nozzle tip toward the back of the intake valve,
   // dashes running outward; the cone grows with the injection time (--isc, set in paintEng)
   const ENG_TIP = [175.7, 194.7];   // nozzle tip just inside the top-left corner of the cylinder   // nozzle tip, set back up the intake port so the spray crosses it to the valve
@@ -2140,12 +2144,12 @@ html.budget .tabs { grid-template-columns: repeat(4, 1fr); }
     const W = (d, c, cls = "") => `<path class="eg-wb" d="${d}" style="--wc:${c}"/><path class="eg-w ${cls}" d="${d}" style="--wc:${c}"/>`;   // eg-wb: dark conduit (same for every wire, PCB-like); eg-w: the wire's own colour as pulses running inside
     const tag = ([id, , x, y, cap, w, c]) => `<g class="eg-tag" data-t="${id}" transform="translate(${x} ${y})" style="--tc:${c}"><text class="eg-cap" x="2" y="0">${T(cap)}</text>`
       + `<rect x="0" y="5" width="${w}" height="22" rx="11"/><text class="eg-val" x="${w / 2}" y="21" text-anchor="middle">–</text></g>`;
-    let s = `<svg class="eng" viewBox="0 0 360 500" role="img" aria-label="${T("ภาพรวมเครื่องยนต์")}">`
+    let s = `<svg class="eng" viewBox="0 0 360 520" role="img" aria-label="${T("ภาพรวมเครื่องยนต์")}">`
       + `<defs><radialGradient id="egSprayG"><stop offset="0" stop-color="#ffd9a0" stop-opacity=".85"/><stop offset=".45" stop-color="#FF7A2F" stop-opacity=".35"/><stop offset="1" stop-color="#FF7A2F" stop-opacity="0"/></radialGradient></defs>`;
     // wires first, under the parts; sensors send to the ECU, the ECU drives the pump relay, the injector and the ignition coil (eg-out: dots run back out)
-    s += W("M36 84 V412 H268 V430", "#FF7A2F", "eg-out") + W("M161 186 H154 V180 H28 V418 H260 V430", "#FF7A2F", "eg-out") + W("M88 266 V272 H20 V424 H252 V430", "#FFD166")
-      + W("M208 110 V62 H352 V456 H344", "#F5B82E", "eg-out eg-ign") + W("M256 214 H338 V430", "#E06D53") + W("M269 188 V206 H346 V430", "#2EE59D")
-      + W("M152 340 H46 V406 H276 V430", "#F5B82E") + W("M271 375 H292 V430", "#2EE59D") + W("M86 462 H248", "#FF5252");
+    s += W("M36 84 V426 H268 V450", "#FF7A2F", "eg-out") + W("M161 186 H154 V180 H28 V432 H260 V450", "#FF7A2F", "eg-out") + W("M88 266 V272 H20 V438 H252 V450", "#FFD166")
+      + W("M208 110 V62 H352 V476 H344", "#F5B82E", "eg-out eg-ign") + W("M256 214 H338 V450", "#E06D53") + W("M269 188 V206 H346 V450", "#2EE59D")
+      + W("M152 340 H46 V420 H276 V450", "#F5B82E") + W("M271 375 H292 V450", "#2EE59D") + W("M86 482 H248", "#FF5252");
     // fuel tank with the pump inside, fuel line to the injector
     const fl = "M42 18 V12 Q42 6 48 6 H140 Q148 6 148 14 V92 C148 125 147.4 150 154.8 167.9";   // fuel hose: tank top → into the injector inlet along its axis
     s += `<text class="eg-cap" x="64" y="31">${T("ถังน้ำมัน")}</text><g transform="translate(12 10)">${tankArt()}</g><rect x="84" y="12" width="16" height="6" rx="2" class="tk-tank"/>`
@@ -2183,8 +2187,8 @@ html.budget .tabs { grid-template-columns: repeat(4, 1fr); }
       + `<g class="eg-pg"><rect x="176" y="222" width="64" height="28" rx="3" class="eg-pis"/><path d="M178 230 h60 M178 236 h60" class="eg-p eg-thin"/></g>`
       + `<rect x="152" y="333" width="14" height="14" rx="2" class="eg-sen" style="--sc:#F5B82E"/>`
       + `<rect x="255" y="367" width="16" height="16" rx="3" class="eg-sen" style="--sc:#2EE59D"/>`
-      + `<rect x="16" y="438" width="70" height="48" rx="5" class="eg-p"/><rect x="26" y="430" width="12" height="8" rx="2" class="eg-p"/><rect x="64" y="430" width="12" height="8" rx="2" class="eg-p"/>`
-      + `<rect x="248" y="430" width="96" height="56" rx="7" class="eg-ecu"/><rect x="278" y="444" width="36" height="28" rx="3" class="eg-p"/><text x="296" y="462" text-anchor="middle" class="eg-ecut">ECU</text>`;
+      + `<rect x="16" y="458" width="70" height="48" rx="5" class="eg-p"/><rect x="26" y="450" width="12" height="8" rx="2" class="eg-p"/><rect x="64" y="450" width="12" height="8" rx="2" class="eg-p"/>`
+      + `<rect x="248" y="450" width="96" height="56" rx="7" class="eg-ecu"/><rect x="278" y="464" width="36" height="28" rx="3" class="eg-p"/><text x="296" y="482" text-anchor="middle" class="eg-ecut">ECU</text>`;
     return s + ENGT.map(tag).join("") + `</svg>`;
   }
   const EST = { warn: "var(--warn)", crit: "var(--crit)", idle: "var(--dim)" };   // normal = the tag's own system colour (ENGT), same as its sensor and wire
@@ -2291,10 +2295,10 @@ html.budget .tabs { grid-template-columns: repeat(4, 1fr); }
   const cardName = k => { const b = cbase(k), n = k.includes("~") ? " " + k.split("~")[1] : "";
     return (b === "rpm" ? T("หน้าปัด") + " · " + T(SR[dialRead(k)].label) : T(CAT[b][0])) + n; };
   const faceOpts = sel => [...$("faces").options].map(o => `<option value="${o.value}"${o.value === sel ? " selected" : ""}>${o.textContent}</option>`).join("");
-  const cardsDef = () => [...(BUDGET ? [["rpm", 3], ["side", 3]] : [["speed", 3], ["rpm", 3]]), ["gear", 2], ["shift", 4], ["afr", 6],
+  const cardsDef = () => [...(NOSPD ? [["rpm", 3], ["side", 3]] : [["speed", 3], ["rpm", 3]]), ["gear", 2], ["shift", 4], ["afr", 6],
     ...LAY.r.map(k => ["v:" + k, 3]), ...(BUDGET ? [["engine", 6]] : [["motion", 6]])].filter(c => CAT[c[0]]);
   // ready-made pages (step 2): one tap replaces the layout; "undo" brings the previous one back
-  const DIALS = big => BUDGET ? [["rpm", big ? 6 : 3]] : [["speed", 3], ["rpm", 3]];
+  const DIALS = big => NOSPD ? [["rpm", big ? 6 : 3]] : [["speed", 3], ["rpm", 3]];
   const PRESETS = {
     std: ["มาตรฐาน", "หน้าปัด เกียร์ AFR และค่าหลัก", () => cardsDef()],
     rev: ["เน้นรอบ", "หน้าปัดรอบใหญ่ เกียร์ ไฟเปลี่ยนเกียร์ คันเร่ง", () => [...DIALS(true), ["gear", 2], ["shift", 4], ["v:tps", 3], ["v:igt", 3], ["afr", 6]]],
@@ -2369,7 +2373,7 @@ html.budget .tabs { grid-template-columns: repeat(4, 1fr); }
     buildTiles($(TEL[g]), keys, g, ED[g]);
     const p = $("edp-" + g); p.hidden = !ED[g];
     if (ED[g]) {
-      const hid = Object.keys(TILE).filter(k => !keys.includes(k) && !(BUDGET && k === "speed"));   // Lite: no speed source
+      const hid = Object.keys(TILE).filter(k => !keys.includes(k) && !(NOSPD && k === "speed"));   // Lite over Wi-Fi: no speed source
       p.innerHTML = `<span class="lab">${T("＋ เพิ่มช่อง")}</span><div class="addl">${hid.length ? hid.map(k => `<button class="theme" type="button" data-add="${k}">＋ ${T(TILE[k].label)}</button>`).join("") : `<span class="note">${T("แสดงครบทุกช่องแล้ว")}</span>`}</div>`
         + `<div class="acts"><button class="btn" type="button" data-reset="${g}">${T("คืนค่าเริ่มต้น")}</button><button class="btn go" type="button" data-done="${g}">${T("เสร็จ")}</button></div>`;
     }
@@ -2617,7 +2621,7 @@ html.budget .tabs { grid-template-columns: repeat(4, 1fr); }
 
   function recLabel() { $("rec").textContent = T(rec.on ? "หยุดบันทึก" : "เริ่มบันทึก"); }
 
-/*FULL{*/  // ---------- race box ----------
+/*SPD{*/  // ---------- race box ----------
   function fmtT(v) { return v == null ? T("ไม่ถึง") : v.toFixed(2) + " s"; }
   function finishRun() {
     R.state = "done"; tgt = 25;
@@ -2648,7 +2652,7 @@ html.budget .tabs { grid-template-columns: repeat(4, 1fr); }
       const shown = v != null ? v.toFixed(2) + " s" : (R.state === "done" ? T("ไม่ถึง") : "–");
       return `<div class="split ${v != null ? "hit" : ""}"><span>${s.label}</span><b>${shown}</b><em>${trap}</em></div>`;
     }).join("") + (BUDGET ? "" : `<div class="split ${R.res.g ? "hit" : ""}"><span>${T("แรง G ออกตัวสูงสุด")}</span><b>${R.res.g ? R.res.g.toFixed(2) + " G" : "–"}</b><em>MPU-6050</em></div>`);
-  }/*}FULL:function finishRun() {} function raceButtons() {} function paintHist() {} function paintRace() {}*/
+  }/*}SPD:function finishRun() {} function raceButtons() {} function paintHist() {} function paintRace() {}*/
 
 /*FULL{*/  // ---------- lean gauge + G-ball ----------
   const LX = 100, LY = 110, LR = 92;
@@ -2736,7 +2740,7 @@ html.budget .tabs { grid-template-columns: repeat(4, 1fr); }
     $("pk-hot").textContent = P.hotT.toFixed(0) + " s";
     $("pk-hotn").textContent = lang === "en" ? P.hotN + "×" : P.hotN + " ครั้ง";
     $("pk-batt").textContent = P.battMin < 99 ? P.battMin.toFixed(1) + " V" : "–";
-    const a = P.eotAt, sp = a && !BUDGET ? ` · ${a.spd.toFixed(0)} km/h` : "";   // Lite: no road speed
+    const a = P.eotAt, sp = a && !NOSPD ? ` · ${a.spd.toFixed(0)} km/h` : "";   // Lite: no road speed
     $("pk-hotat").textContent = !a ? "" : lang === "en"
       ? `Hottest point ${P.eot.toFixed(0)} °C: ${n0(a.rpm)} rpm · throttle ${a.tps.toFixed(0)}%${sp}`
       : `สภาวะตอนร้อนสุด (${P.eot.toFixed(0)} °C): ${n0(a.rpm)} RPM · TPS ${a.tps.toFixed(0)}%${sp}`;
@@ -3123,7 +3127,7 @@ html.budget .tabs { grid-template-columns: repeat(4, 1fr); }
   applyApp(); buildAppIcons(); fitBrand(); window.tgFitBrand = fitBrand;
 
   // ---------- tabs + hash ----------
-  const VIEWS = ["ride", "tune", "race", "graph", "sys", "set"].filter(v => !(BUDGET && v === "race"));
+  const VIEWS = ["ride", "tune", "race", "graph", "sys", "set"].filter(v => !(NOSPD && v === "race"));
   let backView = "ride";   // where the settings page "back" button returns to
   function go() {
     const h = location.hash.replace("#", ""), prevView = view; view = VIEWS.includes(h) ? h : "ride";

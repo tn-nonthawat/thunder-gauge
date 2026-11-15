@@ -14,7 +14,10 @@
 #define KL_SERIAL Serial1
 #endif
 
-extern WebServer server;
+#ifndef TG_SERVER_T
+#define TG_SERVER_T WebServer   // the Lite .ino sets TgServer (tg_server.h: also answers Bluetooth requests)
+#endif
+extern TG_SERVER_T server;
 extern bool fsOk;
 
 const int KL_RX = 20, KL_TX = 21, WAKE_NPN = 8;

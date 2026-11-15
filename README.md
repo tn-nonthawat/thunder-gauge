@@ -8,7 +8,9 @@
 
 Version 0.9-beta.
 
-A phone dashboard for the Honda Wave 110i, made for learning how the ECU works. An ESP32-C3 reads the ECU over K-Line and serves the gauge page over its own Wi-Fi. K-Line only: no GPS, no motion sensor.
+A phone dashboard for the Honda Wave 110i, made for learning how the ECU works. An ESP32-C3 reads the ECU over K-Line and serves the gauge page over its own Wi-Fi. K-Line only: no GPS module, no motion sensor.
+
+New (beta, not yet tested on a bike): a Bluetooth phone app for Android. The board talks to the app over Bluetooth instead of Wi-Fi, and the app uses the phone's own GPS for road speed (the Wave 110i ECU sends none), so the speed dial, the gear number and the timer tab work. See "Bluetooth app" below.
 
 The ECU side is read-only: the firmware sends only the wake/init frames and read requests (live data tables, fault-code pages). It never writes to the ECU and never clears codes.
 
@@ -21,6 +23,9 @@ The ECU side is read-only: the firmware sends only the wake/init frames and read
 | `source/smart-gauge-demo.html` | Gauge page source (opens on its own as a simulated demo) |
 | `source/ecu_board.py`, `source/kline_card.*` | Turn the demo into the board page (real ECU data) |
 | `source/mk_budget.py` | Builds the board page into `firmware/thunder_gauge_lite/page_gz.h` |
+| `app/` | The Bluetooth phone app (built by `mk_budget.py`), to be served over https, e.g. GitHub Pages |
+| `firmware/thunder_gauge_lite/ble_link.h`, `tg_server.h` | Bluetooth link: the same requests as over Wi-Fi, carried over BLE |
+| `firmware/thunder_gauge_lite/partitions.csv` | Flash layout with room for Bluetooth (two 1.75 MB app slots) |
 | `wiring-lite-usb.png` | Wiring: ESP32-C3 + K-Line module, powered from the bike's USB socket |
 
 ## Install / update from an Android phone
@@ -30,7 +35,9 @@ The ECU side is read-only: the firmware sends only the wake/init frames and read
 3. Open `http://192.168.4.1/update` in the browser (or System tab → อัปเดตเฟิร์มแวร์), pick the .bin and upload.
 4. The board restarts by itself. If the upload breaks off, the old firmware keeps running.
 
-The first install on a new board goes over USB: Arduino IDE → open `firmware/thunder_gauge_lite/thunder_gauge_lite.ino` → board "ESP32C3 Dev Module", USB CDC On Boot enabled → Upload. After that, updates can go over Wi-Fi as above. On first start the board opens a setup page (name, Wi-Fi name and password).
+The first install on a new board goes over USB: Arduino IDE → open `firmware/thunder_gauge_lite/thunder_gauge_lite.ino` → board "ESP32C3 Dev Module", USB CDC On Boot enabled, Partition Scheme "Minimal SPIFFS (1.9MB APP with OTA)" → Upload. After that, updates can go over Wi-Fi as above (or over Bluetooth from the app). On first start the board opens a setup page (name, Wi-Fi name and password, Bluetooth PIN).
+
+Boards running v0.9-beta: the Bluetooth firmware is bigger than the old 1.25 MB app slot, so it needs a new flash layout (`partitions.csv` in the sketch folder). That one update must go over USB, not Wi-Fi, and it clears the board's saved settings: run the setup page again afterwards.
 
 ## Building it yourself
 
@@ -38,9 +45,27 @@ After editing the page, rebuild `page_gz.h` (Python 3, run in `source/`):
 
     python mk_budget.py smart-gauge-demo.html thunder-lite-demo.html ../firmware/thunder_gauge_lite
 
-Then compile `firmware/thunder_gauge_lite/thunder_gauge_lite.ino` in the Arduino IDE (Sketch → Export Compiled Binary gives the .bin).
+This also rebuilds the Bluetooth app in `app/`. Then compile `firmware/thunder_gauge_lite/thunder_gauge_lite.ino` in the Arduino IDE (Sketch → Export Compiled Binary gives the .bin).
 
 Wave 110i ECU: engine data is in table 0x17, O2 in 0x20, neutral switch and fuel pump in 0xD1. The ECU reports no MAP, IAT or speed.
+
+## Bluetooth app (Android, beta)
+
+Why: the board's own page is plain http (`192.168.4.1`), and Chrome does not let such a page use the phone's GPS or Bluetooth. The app is the same gauge page served over https, so it may use both.
+
+<img src="app/qr.png" width="160" alt="QR code: the Thunder Gauge app">
+
+1. On the phone (Android, Chrome), open the app once with internet: https://tn-nonthawat.github.io/thunder-gauge/app/ (also linked from the gauge's Wi-Fi page, Settings → แอปบลูทูธ). Chrome can add it to the home screen; after that it also opens with no internet.
+2. Turn the key on, tap "เชื่อมต่อ", pick the gauge and type the PIN: `123456` the first time. On a new board the setup page then opens inside the app (set your own PIN there).
+3. Allow location so the app can read the speed from the GPS.
+
+Once the app is connected, the board turns its Wi-Fi off by itself (unless a phone is on the Wi-Fi). Nothing to choose: Wi-Fi users who never open the app keep Wi-Fi as before.
+
+- Speed comes from the phone's GPS, about once a second: fine for the dial and comparing runs on your own bike, less exact than a GPS module.
+- Everything else works as over Wi-Fi: settings, shared screen layout, fault codes, the scan card, firmware update (Settings → อัปเดตเฟิร์มแวร์, over Bluetooth, takes a few minutes).
+- Need the Wi-Fi page again (an iPhone, or a second phone)? In the app: Settings → บลูทูธ · GPS มือถือ → turn the board's Wi-Fi on, or press BOOT briefly. It turns itself off after 10 minutes with nobody on it.
+- iPhone Safari has no Web Bluetooth: use the Wi-Fi page there (no speed).
+- Holding BOOT for 3 s also makes the board forget paired phones.
 
 ## Which bikes work
 

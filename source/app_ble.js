@@ -20,6 +20,8 @@
   var en = function () { return document.documentElement.lang === "en"; };
   var L = function (th, e) { return en() ? e : th; };
 
+  var IOS = /iP(hone|ad|od)/.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+  var BLUEFY = "https://apps.apple.com/app/id1492822055";   // Bluefy – Web BLE Browser (free): Web Bluetooth on iPhone
   var T = window.TGBLE = { state: "off", name: "", mock: MOCK, supported: !!(navigator.bluetooth || MOCK), live: null, liveAt: 0, err: "" };
   var subs = [];
   T.on = function (f) { subs.push(f); };
@@ -378,13 +380,15 @@
     "background:var(--panel,#141924);color:var(--text,#e8edf6);border:1px solid var(--line,#2a3346);border-radius:99px;padding:8px 8px 8px 14px;box-shadow:0 6px 24px rgba(0,0,0,.45);font:600 13px var(--font-body,system-ui)}" +
     "#tg-bt[hidden]{display:none}#tg-bt .m{flex:1;min-width:0;line-height:1.35}#tg-bt .m small{display:block;font-weight:400;color:var(--dim,#8d97ab);font-size:11.5px;white-space:normal}" +
     "#tg-bt button{flex:none;font:600 13px var(--font-body,system-ui);color:#fff;background:var(--accent,#ff3b30);border:0;border-radius:99px;padding:9px 14px;cursor:pointer}" +
+    "#tg-bt .bb{display:flex;flex-direction:column;gap:6px;flex:none}#tg-bt .bb a{display:block;text-align:center;font:600 13px var(--font-body,system-ui);color:#fff;background:#2f6fe4;border-radius:99px;padding:9px 14px;text-decoration:none}#tg-bt .bb a[hidden],#tg-bt button[hidden]{display:none}" +
     "#tg-bt i{width:9px;height:9px;border-radius:50%;flex:none;background:var(--dim,#8d97ab)}#tg-bt i.w{background:var(--warn,#f2d24b);animation:tgbtp 1s infinite alternate}@keyframes tgbtp{to{opacity:.3}}" +
     "#bt-card .bt-kv{display:flex;justify-content:space-between;gap:10px;padding:6px 0;border-top:1px solid var(--line,#2a3346);font-size:13.5px}#bt-card .bt-kv:first-of-type{border-top:0}#bt-card .bt-kv span{color:var(--dim,#8d97ab)}#bt-card .bt-kv b{text-align:right}" +
     "#bt-card .acts{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}#bt-card .bt-err{color:var(--crit,#ff5a4e);font-size:13px}";
   function el(h) { var d = document.createElement("div"); d.innerHTML = h; return d.firstElementChild; }
   function btTxt() {
     var s = T.state;
-    if (!T.supported) return [L("บลูทูธใช้ไม่ได้ในเบราว์เซอร์นี้", "No Bluetooth in this browser"), L("ใช้ Chrome บน Android หรือต่อ Wi-Fi ของเกจแล้วเปิด http://192.168.4.1", "Use Chrome on Android, or join the gauge's Wi-Fi and open http://192.168.4.1")];
+    if (!T.supported && IOS) return [L("iPhone: เปิดแอปนี้ในแอป Bluefy", "iPhone: open this app in Bluefy"), L("Safari และ Chrome บน iPhone ใช้บลูทูธไม่ได้ · 1) ติดตั้ง Bluefy (ฟรี) 2) คัดลอกลิงก์ 3) เปิด Bluefy แล้ววางลิงก์ในช่องที่อยู่", "Safari and Chrome on iPhone have no Bluetooth · 1) Install Bluefy (free) 2) Copy the link 3) Open Bluefy and paste it in the address bar")];
+    if (!T.supported) return [L("บลูทูธใช้ไม่ได้ในเบราว์เซอร์นี้", "No Bluetooth in this browser"), L("Android: เปิดใน Chrome · iPhone: เปิดในแอป Bluefy · หรือต่อ Wi-Fi ของเกจแล้วเปิด http://192.168.4.1", "Android: open in Chrome · iPhone: open in the Bluefy app · or join the gauge's Wi-Fi and open http://192.168.4.1")];
     if (s === "connecting") return [L("กำลังเชื่อมต่อเกจ…", "Connecting to the gauge…"), ""];
     if (s === "lost") return [L("สัญญาณบลูทูธหลุด กำลังต่อใหม่…", "Bluetooth link lost, reconnecting…"), L("บิดกุญแจเปิดอยู่ไหม", "Is the key on?")];
     return [L("ยังไม่ได้เชื่อมต่อเกจ", "Not connected to the gauge"), T.err || L("บิดกุญแจ แล้วกดเชื่อมต่อ เลือกเกจในรายการ · ครั้งแรกใส่ PIN 123456 (หรือ PIN ที่ตั้งไว้)", "Key on, tap connect and pick the gauge · First time: PIN 123456 (or the PIN you set)")];
@@ -395,7 +399,7 @@
       : g === "wait" ? L("กำลังหาตำแหน่ง…", "Getting a fix…") + (LIVE.acc ? " ±" + Math.round(LIVE.acc) + " m" : "")
       : g === "denied" ? L("ไม่ได้อนุญาต", "Not allowed") : g === "none" ? L("ไม่มี GPS", "No GPS") : L("ปิดอยู่", "Off");
   }
-  var apInfo = null;
+  var apInfo = null, copied = false;
   function apAsk(q) {
     if (T.state !== "on") return;
     window.fetch("/api/link" + (q || ""), { cache: "no-store" }).then(function (r) { return r.json(); }).then(function (j) { apInfo = j; paint(); }).catch(function () {});
@@ -407,7 +411,10 @@
       bar.hidden = s === "on";
       bar.querySelector("i").className = s === "connecting" || s === "lost" ? "w" : "";
       bar.querySelector(".m").innerHTML = t[0] + (t[1] ? "<small>" + t[1] + "</small>" : "");
-      var b = bar.querySelector("button"); b.hidden = !T.supported || s === "connecting"; b.textContent = s === "lost" ? L("เลือกใหม่", "Pick again") : L("เชื่อมต่อ", "Connect");
+      var b = bar.querySelector("button"), ios = !T.supported && IOS;
+      b.hidden = (!T.supported && !ios) || s === "connecting";
+      b.textContent = ios ? (copied ? L("คัดลอกแล้ว ✓", "Copied ✓") : L("คัดลอกลิงก์", "Copy link")) : s === "lost" ? L("เลือกใหม่", "Pick again") : L("เชื่อมต่อ", "Connect");
+      var a = bar.querySelector("a"); a.hidden = !ios; a.textContent = L("ติดตั้ง Bluefy", "Get Bluefy");
     }
     var c = document.getElementById("bt-card");
     if (!c) return;
@@ -437,8 +444,13 @@
   setInterval(function () { if (document.getElementById("bt-card") && !document.hidden) apAsk(); }, 15000);
   function ui() {
     var st = document.createElement("style"); st.textContent = CSS; document.head.appendChild(st);
-    var bar = el('<div id="tg-bt" role="status"><i></i><div class="m"></div><button type="button">เชื่อมต่อ</button></div>');
-    bar.querySelector("button").addEventListener("click", T.connect);
+    var bar = el('<div id="tg-bt" role="status"><i></i><div class="m"></div><div class="bb"><a href="' + BLUEFY + '" target="_blank" rel="noopener" hidden></a><button type="button">เชื่อมต่อ</button></div></div>');
+    bar.querySelector("button").addEventListener("click", function () {
+      if (T.supported || !IOS) return T.connect();
+      var u = location.href.split("#")[0].split("?")[0], done = function () { copied = true; paint(); };   // the link to paste into Bluefy
+      if (navigator.clipboard) navigator.clipboard.writeText(u).then(done).catch(function () { prompt(L("คัดลอกลิงก์นี้", "Copy this link"), u); });
+      else prompt(L("คัดลอกลิงก์นี้", "Copy this link"), u);
+    });
     document.body.appendChild(bar);
     var set = document.getElementById("v-set");
     if (set) {

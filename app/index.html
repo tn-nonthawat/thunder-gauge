@@ -1130,14 +1130,18 @@ window.MAP_STORE = {
     }).then(function () {
       ch.res.addEventListener("characteristicvaluechanged", onRes);
       ch.live.addEventListener("characteristicvaluechanged", onLive);
-      return gatt(function () { return ch.res.startNotifications(); });
-    }).then(function () { return gatt(function () { return ch.live.startNotifications(); }); })
+      return sub(ch.res);
+    }).then(function () { return sub(ch.live); })
       .then(function () { return gatt(function () { return ch.live.readValue(); }); })
       .then(function (v) { onLive({ target: { value: v } }); })
       .then(function () {
         T.name = dev.name || ""; try { localStorage.setItem("tg-bt-name", T.name); } catch (e) {}
         setState("on", ""); wake(); pump();
       });
+  }
+  // (re)subscribe: stop first so Chrome really writes the subscription again after a reconnect (it may think it is still on)
+  function sub(c) {
+    return gatt(function () { return c.stopNotifications().catch(function () {}); }).then(function () { return gatt(function () { return c.startNotifications(); }); });
   }
   function lost() {
     ch = {};
@@ -1354,12 +1358,13 @@ window.MAP_STORE = {
           } else if (first) { setVer(0); synced = true; uiSay(L("บอร์ดยังไม่มีค่าหน้าจอ ส่งของเครื่องนี้ไป", "The board has no screen setup yet: sending this phone's")); setTimeout(push, 1500); return; }   // nothing on the board yet: this phone's screen becomes the shared one
           synced = true;
         });
-      }).catch(function (e) { uiSay(L("ดึงค่าหน้าจอไม่สำเร็จ: ", "Could not get the screen setup: ") + (e && e.message || e)); });
+      }).catch(function (e) { uiSay(L("ดึงค่าหน้าจอไม่สำเร็จ: ", "Could not get the screen setup: ") + (e && e.message || e) + L(" · ลองใหม่อัตโนมัติ", " · retrying")); });
     }
     var pulled = false;
     T.on(function (s) { if (s === "on" && !pulled) { pulled = true; pull(true); } if (s !== "on") pulled = false; });
     setInterval(function () {                    // another phone changed the screen: take it over
-      if (!synced || timer || document.hidden || T.state !== "on") return;
+      if (timer || document.hidden || T.state !== "on") return;
+      if (!synced) { pull(true); return; }        // the first read failed: try again (every 10 s while connected)
       window.fetch("/ui?q=1", { cache: "no-store" }).then(function (r) { return r.text(); }).then(function (t) { if (+t && +t !== ver && !timer) pull(false); }).catch(function () {});
     }, 10000);
   })();
@@ -1498,7 +1503,7 @@ window.MAP_STORE = {
         '<button class="btn" type="button" id="bt-apoff">' + L("ปิด Wi-Fi ของบอร์ด", "Turn board Wi-Fi off") + '</button>' +
         '<button class="btn" type="button" id="bt-off">' + L("ตัดการเชื่อมต่อ", "Disconnect") + '</button></div>' +
         '<p class="note">' + L("ความเร็วมาจาก GPS ของมือถือ (ECU ของ Wave 110i ไม่ส่งความเร็ว) ได้ราว 1 ครั้งต่อวินาที วางมือถือให้เห็นท้องฟ้า · Wi-Fi ของบอร์ดใช้ตอนอยากเปิดหน้าเกจจากมือถือเครื่องอื่นหรือ iPhone (http://192.168.4.1) บอร์ดปิด Wi-Fi เองเมื่อแอปนี้ต่อบลูทูธ และปิดอีกครั้งเมื่อไม่มีใครต่อ 10 นาที",
-          "Speed comes from the phone's GPS (the Wave 110i ECU sends none), about once a second; keep the phone where it sees the sky · The board's Wi-Fi is for opening the gauge on another phone or an iPhone (http://192.168.4.1); the board turns it off once this app connects over Bluetooth, and again after 10 minutes with nobody on it") + '</p><p class="note" style="opacity:.6">' + L("รุ่นแอป ", "App build ") + "2026-11-19 14:23" + '</p></div>');
+          "Speed comes from the phone's GPS (the Wave 110i ECU sends none), about once a second; keep the phone where it sees the sky · The board's Wi-Fi is for opening the gauge on another phone or an iPhone (http://192.168.4.1); the board turns it off once this app connects over Bluetooth, and again after 10 minutes with nobody on it") + '</p><p class="note" style="opacity:.6">' + L("รุ่นแอป ", "App build ") + "2026-11-19 14:40" + '</p></div>');
       set.insertBefore(card, set.querySelector(".card"));
       card.querySelector("#bt-go").addEventListener("click", T.connect);
       card.querySelector("#bt-off").addEventListener("click", T.disconnect);

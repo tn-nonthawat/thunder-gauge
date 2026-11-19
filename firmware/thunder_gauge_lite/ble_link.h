@@ -24,6 +24,7 @@
 #include <BLESecurity.h>
 #include <BLE2902.h>
 #include <Update.h>
+#include <host/ble_hs.h>
 #if !defined(CONFIG_NIMBLE_ENABLED)
 #error "ble_link.h is written for the NimBLE stack (ESP32-C3)"
 #endif
@@ -53,6 +54,16 @@ volatile uint16_t blAckSeq = 0; volatile bool blAckNew = false; volatile uint8_t
 uint32_t blOtaSize = 0, blOtaDone = 0; bool blOtaOn = false;
 
 void blOtaStatus(const String& s) { if (blOta) blOta->setValue(s); }
+
+// Notify the connected phone directly. The library's notify() only sends to phones it saw subscribe, and after a
+// reconnect Chrome on Android may skip writing the subscription again (it thinks it is still on), so replies and
+// live data would never arrive. ble_gatts_notify_custom sends to the connection whatever the subscription state.
+static void blNotify(BLECharacteristic* c, const uint8_t* d, size_t n) {
+  c->setValue(d, n);                             // also readable
+  if (!blConn) return;
+  os_mbuf* om = ble_hs_mbuf_from_flat(d, n);
+  if (om) ble_gatts_notify_custom(blConnId, c->getHandle(), om);   // a lost piece is sent again by the reply window
+}
 
 class BlSrvCb : public BLEServerCallbacks {
   void onConnect(BLEServer* s, ble_gap_conn_desc* d) override { blConnId = d->conn_handle; blConnAt = millis(); blGreeted = false; blConn = true; blEvt |= 1; }
@@ -191,8 +202,7 @@ void blSendPiece(uint16_t seq) {
   size_t off = (size_t)seq * blChunk, len = min((size_t)blChunk, blOut.length() - off);
   buf[0] = blOutId; buf[1] = seq + 1 == blOutTotal ? 1 : 0; buf[2] = seq & 255; buf[3] = seq >> 8;
   memcpy(buf + 4, blOut.c_str() + off, len);
-  blRes->setValue(buf, 4 + len);
-  blRes->notify();
+  blNotify(blRes, buf, 4 + len);
 }
 
 void blSendTick() {
@@ -228,8 +238,7 @@ void blLiveTick() {
   int dl = min(liveLen, 64); b[n++] = dl; memcpy(b + n, liveData, dl); n += dl;
   int ol = min(o2Len, 8); b[n++] = ol; memcpy(b + n, o2Data, ol); n += ol;
   int sl = min(stLen, 8); b[n++] = sl; memcpy(b + n, stData, sl); n += sl;
-  blLive->setValue(b, n);
-  if (blConn) blLive->notify();
+  blNotify(blLive, b, n);
 }
 
 void bleLoop() {

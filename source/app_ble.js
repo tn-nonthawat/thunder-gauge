@@ -145,14 +145,18 @@
     }).then(function () {
       ch.res.addEventListener("characteristicvaluechanged", onRes);
       ch.live.addEventListener("characteristicvaluechanged", onLive);
-      return gatt(function () { return ch.res.startNotifications(); });
-    }).then(function () { return gatt(function () { return ch.live.startNotifications(); }); })
+      return sub(ch.res);
+    }).then(function () { return sub(ch.live); })
       .then(function () { return gatt(function () { return ch.live.readValue(); }); })
       .then(function (v) { onLive({ target: { value: v } }); })
       .then(function () {
         T.name = dev.name || ""; try { localStorage.setItem("tg-bt-name", T.name); } catch (e) {}
         setState("on", ""); wake(); pump();
       });
+  }
+  // (re)subscribe: stop first so Chrome really writes the subscription again after a reconnect (it may think it is still on)
+  function sub(c) {
+    return gatt(function () { return c.stopNotifications().catch(function () {}); }).then(function () { return gatt(function () { return c.startNotifications(); }); });
   }
   function lost() {
     ch = {};
@@ -369,12 +373,13 @@
           } else if (first) { setVer(0); synced = true; uiSay(L("บอร์ดยังไม่มีค่าหน้าจอ ส่งของเครื่องนี้ไป", "The board has no screen setup yet: sending this phone's")); setTimeout(push, 1500); return; }   // nothing on the board yet: this phone's screen becomes the shared one
           synced = true;
         });
-      }).catch(function (e) { uiSay(L("ดึงค่าหน้าจอไม่สำเร็จ: ", "Could not get the screen setup: ") + (e && e.message || e)); });
+      }).catch(function (e) { uiSay(L("ดึงค่าหน้าจอไม่สำเร็จ: ", "Could not get the screen setup: ") + (e && e.message || e) + L(" · ลองใหม่อัตโนมัติ", " · retrying")); });
     }
     var pulled = false;
     T.on(function (s) { if (s === "on" && !pulled) { pulled = true; pull(true); } if (s !== "on") pulled = false; });
     setInterval(function () {                    // another phone changed the screen: take it over
-      if (!synced || timer || document.hidden || T.state !== "on") return;
+      if (timer || document.hidden || T.state !== "on") return;
+      if (!synced) { pull(true); return; }        // the first read failed: try again (every 10 s while connected)
       window.fetch("/ui?q=1", { cache: "no-store" }).then(function (r) { return r.text(); }).then(function (t) { if (+t && +t !== ver && !timer) pull(false); }).catch(function () {});
     }, 10000);
   })();

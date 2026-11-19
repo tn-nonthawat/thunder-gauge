@@ -34,8 +34,11 @@
   // write with response; older Web Bluetooth (Bluefy on iPhone) only has writeValue, which also waits for the answer here
   function wr(c, v) { return c.writeValueWithResponse ? c.writeValueWithResponse(v) : c.writeValue(v); }
 
+  // counts for the "received" row on the Bluetooth card (diagnostics: do the board's pieces reach this phone?)
+  T.rx = { res: 0, live: 0, last: "" };
   function onLive(e) {
     var dv = e.target.value, i = 0;
+    T.rx.live++;
     if (dv.byteLength < 9 || dv.getUint8(0) !== 1) return;
     i = 1;
     var awake = !!dv.getUint8(i++), age = dv.getUint16(i, true); i += 2;
@@ -49,6 +52,8 @@
   var cur = null;          // the request waiting for its reply
   function onRes(e) {
     var dv = e.target.value;
+    T.rx.res++;
+    try { T.rx.last = dv.byteLength + "B [" + [0, 1, 2, 3].map(function (k) { return k < dv.byteLength ? dv.getUint8(k) : "-"; }).join(",") + "]" + (cur ? " รอ id " + cur.id + " ชิ้น " + cur.next : " ไม่มีคำขอค้าง"); } catch (x) { T.rx.last = "อ่านไม่ได้: " + x; }
     if (!cur || dv.byteLength < 4) return;
     var id = dv.getUint8(0), last = dv.getUint8(1), seq = dv.getUint16(2, true);
     if (id !== cur.id) return;
@@ -457,6 +462,7 @@
     c.querySelector("#bt-st").textContent = on ? L("เชื่อมต่อแล้ว", "Connected") + (T.name ? " · " + T.name : "") : btTxt()[0];
     c.querySelector("#bt-gps").textContent = gpsTxt();
     c.querySelector("#bt-ui").textContent = T.uiInfo || "–";
+    c.querySelector("#bt-rx").textContent = L("คำตอบ ", "replies ") + T.rx.res + L(" ชิ้น · สด ", " · live ") + T.rx.live + (T.rx.last ? " · " + T.rx.last : "") + (cur ? L(" · ค้าง: id ", " · waiting: id ") + cur.id : "");
     c.querySelector("#bt-ap").textContent = !on || !apInfo ? "–" : apInfo.ap ? L("เปิดอยู่", "On") + " · " + apInfo.ssid + (apInfo.auto && apInfo.off > 0 ? " · " + L("ปิดเองใน ", "turns off in ") + Math.max(1, Math.round(apInfo.off / 60)) + L(" นาที", " min") : "") : L("ปิดอยู่", "Off");
     c.querySelector("#bt-go").hidden = on || !T.supported;
     c.querySelector("#bt-off").hidden = !on || MOCK;
@@ -511,6 +517,7 @@
         '<div class="bt-kv"><span>' + L("GPS มือถือ (ความเร็ว)", "Phone GPS (speed)") + '</span><b id="bt-gps">–</b></div>' +
         '<div class="bt-kv"><span>' + L("Wi-Fi ของบอร์ด", "Board Wi-Fi") + '</span><b id="bt-ap">–</b></div>' +
         '<div class="bt-kv"><span>' + L("ซิงก์หน้าจอ", "Screen sync") + '</span><b id="bt-ui">–</b></div>' +
+        '<div class="bt-kv"><span>' + L("รับข้อมูล", "Received") + '</span><b id="bt-rx">–</b></div>' +
         '<p class="bt-err"></p><div class="acts">' +
         '<button class="btn go" type="button" id="bt-go">' + L("เชื่อมต่อเกจ", "Connect gauge") + '</button>' +
         '<button class="btn" type="button" id="bt-gpsgo">' + L("เปิด GPS", "Turn on GPS") + '</button>' +

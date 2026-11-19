@@ -6,11 +6,11 @@
 >
 > โปรเจคนี้ทำขึ้นเพื่อการศึกษา: เรียนรู้ว่ากล่อง ECU ทำงานอย่างไร เซ็นเซอร์แต่ละตัววัดอะไร และ ECU ตอบสนองอย่างไร ไม่ใช่สินค้าเชิงพาณิชย์หรือเครื่องมือวินิจฉัยที่ได้รับการรับรอง ผู้ใช้รับความเสี่ยงเอง และอย่าดูมือถือขณะขับขี่
 
-Version 0.9-beta.
+Version 0.10-beta (Bluetooth app). Boards on 0.9-beta need one USB flash to update: see "Updating a board from 0.9-beta" below.
 
 A phone dashboard for the Honda Wave 110i, made for learning how the ECU works. An ESP32-C3 reads the ECU over K-Line and serves the gauge page over its own Wi-Fi. K-Line only: no GPS module, no motion sensor.
 
-New (beta, not yet tested on a bike): a Bluetooth phone app for Android (Chrome) and iPhone (Bluefy browser). The board talks to the app over Bluetooth instead of Wi-Fi, and the app uses the phone's own GPS for road speed (the Wave 110i ECU sends none), so the speed dial, the gear number and the timer tab work. See "Bluetooth app" below.
+New in 0.10-beta (checked on the bench, not yet on a ride): a Bluetooth phone app for Android (Chrome) and iPhone (Bluefy browser). The board talks to the app over Bluetooth instead of Wi-Fi, and the app uses the phone's own GPS for road speed (the Wave 110i ECU sends none), so the speed dial, the gear number and the timer tab work. See "Bluetooth app" below.
 
 The ECU side is read-only: the firmware sends only the wake/init frames and read requests (live data tables, fault-code pages). It never writes to the ECU and never clears codes.
 
@@ -18,7 +18,7 @@ The ECU side is read-only: the firmware sends only the wake/init frames and read
 
 | Path | What it is |
 |---|---|
-| `firmware/thunder-gauge-lite.bin` | Ready-made firmware, for updating the board from a phone |
+| `firmware/thunder-gauge-lite.bin` | Ready-made firmware (0.10-beta), for updating a board from a phone. Boards still on 0.9-beta need the USB flash first |
 | `firmware/thunder_gauge_lite/` | Firmware source (Arduino). `page_gz.h` is the gauge page, built by `mk_budget.py` |
 | `source/smart-gauge-demo.html` | Gauge page source (opens on its own as a simulated demo) |
 | `source/ecu_board.py`, `source/kline_card.*` | Turn the demo into the board page (real ECU data) |
@@ -30,14 +30,23 @@ The ECU side is read-only: the firmware sends only the wake/init frames and read
 
 ## Install / update from an Android phone
 
-1. On the phone, download the firmware: [thunder-gauge-lite.bin (v0.9-beta)](https://github.com/tn-nonthawat/thunder-gauge/releases/download/v0.9-beta/thunder-gauge-lite.bin). Newer versions will be on the [Releases](https://github.com/tn-nonthawat/thunder-gauge/releases) page.
+1. On the phone, download the firmware: [thunder-gauge-lite.bin (v0.10-beta)](https://github.com/tn-nonthawat/thunder-gauge/releases/download/v0.10-beta/thunder-gauge-lite.bin). Older and newer versions are on the [Releases](https://github.com/tn-nonthawat/thunder-gauge/releases) page.
 2. Turn the key on, join the Wi-Fi `ThunderGauge-Lite` (no password on a new board; it has the one you set in the setup page after that). If Android says the network has no internet, choose to stay connected.
 3. Open `http://192.168.4.1/update` in the browser (or System tab → อัปเดตเฟิร์มแวร์), pick the .bin and upload.
 4. The board restarts by itself. If the upload breaks off, the old firmware keeps running.
 
 The first install on a new board goes over USB: Arduino IDE → open `firmware/thunder_gauge_lite/thunder_gauge_lite.ino` → board "ESP32C3 Dev Module", USB CDC On Boot enabled, Partition Scheme "Minimal SPIFFS (1.9MB APP with OTA)" → Upload. After that, updates can go over Wi-Fi as above (or over Bluetooth from the app). On first start the board opens a setup page (name, Wi-Fi name and password, Bluetooth PIN).
 
-Boards running v0.9-beta: the Bluetooth firmware is bigger than the old 1.25 MB app slot, so it needs a new flash layout (`partitions.csv` in the sketch folder). That one update must go over USB, not Wi-Fi, and it clears the board's saved settings: run the setup page again afterwards.
+### Updating a board from 0.9-beta
+
+The Bluetooth firmware (about 1.5 MB) no longer fits the old 1.25 MB app slot, so 0.10-beta uses a new flash layout (`firmware/thunder_gauge_lite/partitions.csv`: two 1.75 MB app slots). The flash layout can only change over USB. Uploading the 0.10-beta .bin on the `/update` page of a 0.9-beta board fails (the file is bigger than the old slot), and the board keeps running 0.9-beta.
+
+1. Note your settings first (bike name, Wi-Fi name and password): this one update erases them.
+2. Connect the board to a computer with a USB cable.
+3. Arduino IDE → open `firmware/thunder_gauge_lite/thunder_gauge_lite.ino` (keep `partitions.csv` in the same folder) → board "ESP32C3 Dev Module", USB CDC On Boot "Enabled", Partition Scheme "Minimal SPIFFS (1.9MB APP with OTA)" → Upload.
+4. The board starts with the setup page: join the Wi-Fi `ThunderGauge-Lite` (no password now) and set it up again, or connect from the Bluetooth app.
+
+After this, every later update goes over Wi-Fi or Bluetooth again, without a computer.
 
 ## Building it yourself
 
@@ -49,7 +58,7 @@ This also rebuilds the Bluetooth app in `app/`. Then compile `firmware/thunder_g
 
 Wave 110i ECU: engine data is in table 0x17, O2 in 0x20, neutral switch and fuel pump in 0xD1. The ECU reports no MAP, IAT or speed.
 
-## Bluetooth app (Android, beta)
+## Bluetooth app (Android and iPhone, beta)
 
 Why: the board's own page is plain http (`192.168.4.1`), and Chrome does not let such a page use the phone's GPS or Bluetooth. The app is the same gauge page served over https, so it may use both.
 
@@ -64,8 +73,9 @@ Once the app is connected, the board turns its Wi-Fi off by itself (unless a pho
 - Speed comes from the phone's GPS, about once a second: fine for the dial and comparing runs on your own bike, less exact than a GPS module.
 - Everything else works as over Wi-Fi: settings, shared screen layout, fault codes, the scan card, firmware update (Settings → อัปเดตเฟิร์มแวร์, over Bluetooth, takes a few minutes).
 - Need the Wi-Fi page again (a second phone)? In the app: Settings → บลูทูธ · GPS มือถือ → turn the board's Wi-Fi on, or press BOOT briefly. It turns itself off after 10 minutes with nobody on it.
-- iPhone: Safari and Chrome on iPhone have no Web Bluetooth. Open the app in the free **Bluefy** browser (App Store) instead: connecting and GPS speed work there (checked on the bench). Without Bluefy, use the Wi-Fi page (no speed).
-- Only one phone at a time can be connected over Bluetooth.
+- iPhone: Safari and Chrome on iPhone have no Web Bluetooth. Open the app in the free **Bluefy** browser (App Store) instead: connecting, GPS speed and the shared screen setup work there (checked on the bench). Live data arrives about once a second on iPhone (Bluefy passes Bluetooth data to the page slowly), faster on Android. Without Bluefy, use the Wi-Fi page (no speed).
+- Only one phone at a time can be connected over Bluetooth. When another phone connects, it takes over.
+- The screen setup (theme, card layout, dial faces) is kept on the board, so every phone shows the same screen: change it on one phone, and the next phone that connects gets it.
 - Holding BOOT for 3 s also makes the board forget paired phones.
 
 ## Which bikes work

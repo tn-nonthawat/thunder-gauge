@@ -35,7 +35,7 @@
   function wr(c, v) { return c.writeValueWithResponse ? c.writeValueWithResponse(v) : c.writeValue(v); }
 
   // counts for the "received" row on the Bluetooth card (diagnostics: do the board's pieces reach this phone?)
-  T.rx = { res: 0, live: 0, last: "" };
+  T.rx = { res: 0, live: 0, last: "", done: 0, tout: 0, ms: 0 };
   function onLive(e) {
     var dv = e.target.value, i = 0;
     T.rx.live++;
@@ -85,6 +85,7 @@
     var h = new Headers();
     lines.slice(1).forEach(function (l) { var k = l.indexOf(":"); if (k > 0) { try { h.append(l.slice(0, k).trim(), l.slice(k + 1).trim()); } catch (e) {} } });
     h.delete("content-length");
+    T.rx.done++; T.rx.ms += Date.now() - c.t0;
     c.resolve(new Response(st === 204 || st === 304 ? null : body, { status: st < 200 || st > 599 ? 502 : st, headers: h }));
     pump();
   }
@@ -95,8 +96,8 @@
     if (cur || !queue.length || T.state !== "on" || T.otaBusy) return;
     var r = queue.shift();
     rid = (rid + 1) & 255;
-    cur = { id: rid, parts: [], next: 0, resolve: r.resolve, reject: r.reject };
-    cur.timer = setTimeout(function () { if (cur && cur.id === rid) { var c = cur; cur = null; c.reject(new TypeError("Bluetooth request timed out")); pump(); } }, r.wait);
+    cur = { id: rid, parts: [], next: 0, resolve: r.resolve, reject: r.reject, t0: Date.now() };
+    cur.timer = setTimeout(function () { if (cur && cur.id === rid) { var c = cur; cur = null; T.rx.tout++; c.reject(new TypeError("Bluetooth request timed out")); pump(); } }, r.wait);
     var data = new TextEncoder().encode(r.method + " " + r.url + " " + (r.form ? "f" : "-") + "\n" + r.body);
     var CH = 500, n = Math.max(1, Math.ceil(data.length / CH)), id = rid;
     var chain = Promise.resolve();
@@ -135,7 +136,19 @@
     else if (typeof body !== "string") body = String(body);
     var method = (opt.method || "GET").toUpperCase();
     return new Promise(function (resolve, reject) {
-      queue.push({ method: method, url: url, body: body, form: form, resolve: resolve, reject: reject, wait: waitFor(url) });
+      // a GET already waiting in the queue for the same address gets the same answer (polls that come faster than a
+      // slow link answers would otherwise pile up), and the screen setup goes first
+      if (method === "GET") for (var i = 0; i < queue.length; i++) {
+        var q = queue[i];
+        if (q.method === "GET" && q.url === url) {
+          var pr = q.resolve, pj = q.reject;
+          q.resolve = function (res) { var c = res.clone(); pr(res); resolve(c); };
+          q.reject = function (e) { pj(e); reject(e); };
+          return;
+        }
+      }
+      var item = { method: method, url: url, body: body, form: form, resolve: resolve, reject: reject, wait: waitFor(url) };
+      if (/^\/ui(\?|$)/.test(url)) queue.unshift(item); else queue.push(item);
       pump();                                     // waits for the link: a request made before connecting is sent once it is up
     });
   };
@@ -465,7 +478,9 @@
     c.querySelector("#bt-st").textContent = on ? L("เชื่อมต่อแล้ว", "Connected") + (T.name ? " · " + T.name : "") : btTxt()[0];
     c.querySelector("#bt-gps").textContent = gpsTxt();
     c.querySelector("#bt-ui").textContent = T.uiInfo || "–";
-    c.querySelector("#bt-rx").textContent = L("คำตอบ ", "replies ") + T.rx.res + L(" ชิ้น · สด ", " · live ") + T.rx.live + (T.rx.last ? " · " + T.rx.last : "") + (cur ? L(" · ค้าง: id ", " · waiting: id ") + cur.id : "");
+    c.querySelector("#bt-rx").textContent = L("เสร็จ ", "done ") + T.rx.done + L(" · หมดเวลา ", " · timed out ") + T.rx.tout +
+      (T.rx.done ? L(" · เฉลี่ย ", " · avg ") + Math.round(T.rx.ms / T.rx.done) + " ms" : "") + L(" · คิว ", " · queue ") + queue.length +
+      L(" · ชิ้น ", " · pieces ") + T.rx.res + L(" · สด ", " · live ") + T.rx.live + (T.rx.last ? " · " + T.rx.last : "");
     c.querySelector("#bt-ap").textContent = !on || !apInfo ? "–" : apInfo.ap ? L("เปิดอยู่", "On") + " · " + apInfo.ssid + (apInfo.auto && apInfo.off > 0 ? " · " + L("ปิดเองใน ", "turns off in ") + Math.max(1, Math.round(apInfo.off / 60)) + L(" นาที", " min") : "") : L("ปิดอยู่", "Off");
     c.querySelector("#bt-go").hidden = on || !T.supported;
     c.querySelector("#bt-off").hidden = !on || MOCK;

@@ -74,7 +74,9 @@ void uartOn() { KL_SERIAL.begin(KL_BAUD, SERIAL_8N1, KL_RX, KL_TX); }
 void uartOff() { KL_SERIAL.end(); pinMode(KL_TX, OUTPUT); digitalWrite(KL_TX, HIGH); pinMode(KL_RX, INPUT); }
 void drain() { while (KL_SERIAL.available()) KL_SERIAL.read(); }
 
-// How much of the time the K-Line sits high (idle) - 100 = line powered and free, 0 = no 12V or shorted.
+// How much of the time the RX pin sits high - 0 = no 12V or the line is shorted. High does NOT mean the ECU wire is
+// connected: the module pulls its K pin up by itself, so a board with no K-Line wire at all also reads 100.
+// The echo of the last wake frame (klEcho) tells more: our own bytes only come back when the module has 12 V and TX/RX work.
 int lineHighPct() {
   uartOff();
   int h = 0; for (int i = 0; i < 200; i++) { h += digitalRead(KL_RX); delayMicroseconds(250); }
@@ -83,6 +85,7 @@ int lineHighPct() {
 }
 
 // Send a frame and swallow our own echo (K-Line is one wire: everything we send comes back on RX).
+int8_t klEcho = -1;   // last frame sent: -1 = none yet, 0 = no echo / wrong echo, 1 = echo ok
 bool sendFrame(const uint8_t* b, int n) {
   drain();
   KL_SERIAL.write(b, n); KL_SERIAL.flush();
@@ -90,9 +93,10 @@ bool sendFrame(const uint8_t* b, int n) {
   while (got < n && millis() - t < 80) if (KL_SERIAL.available()) e[got++] = KL_SERIAL.read();
   if (got < n) {
     logLine("  ส่ง " + hexs(b, n) + "  ✗ ไม่ได้ยินเสียงสะท้อน (" + String(got) + "/" + String(n) + " ไบต์) → เช็คสาย TX/RX หรือโมดูลไม่มีไฟ 12V");
-    return false;
+    klEcho = 0; return false;
   }
-  if (memcmp(e, b, n) != 0) { logLine("  ส่ง " + hexs(b, n) + "  ✗ เสียงสะท้อนเพี้ยน: " + hexs(e, n)); return false; }
+  if (memcmp(e, b, n) != 0) { logLine("  ส่ง " + hexs(b, n) + "  ✗ เสียงสะท้อนเพี้ยน: " + hexs(e, n)); klEcho = 0; return false; }
+  klEcho = 1;
   logLine("  ส่ง " + hexs(b, n) + "  ✓");
   return true;
 }
@@ -177,8 +181,9 @@ void apiState() {   // cheap poll for the dashboard: is the ECU answering, and h
 void apiStatus() {
   lastApi = millis();
   int p = awake ? 100 : lineHighPct();   // never break a live session just to sample the line
-  logLine("สาย K-Line อยู่สถานะสูง " + String(p) + "% ของเวลา" + (p >= 90 ? " ✓ มีไฟรอ" : p <= 10 ? " ✗ ไม่มีไฟ" : " (แกว่ง)"));
-  sendJson("{\"line\":" + String(p) + ",\"awake\":" + (awake ? "true" : "false") + ",\"log\":\"" + jsonEsc(tail()) + "\"}");
+  logLine("สาย K-Line อยู่สถานะสูง " + String(p) + "% ของเวลา" + (p <= 10 ? " ✗ ไม่มีไฟ" : p < 90 ? " (แกว่ง)" :
+          klEcho == 1 ? " · เสียงสะท้อนครบ ✓ โมดูลพร้อม" : klEcho == 0 ? " · แต่ไม่มีเสียงสะท้อน ✗ เช็คไฟ 12V ของโมดูลและสาย TX/RX" : " · ยังไม่ได้ลองส่ง"));
+  sendJson("{\"line\":" + String(p) + ",\"echo\":" + String(awake ? 1 : klEcho) + ",\"awake\":" + (awake ? "true" : "false") + ",\"log\":\"" + jsonEsc(tail()) + "\"}");
 }
 void apiWake() {
   lastApi = millis();

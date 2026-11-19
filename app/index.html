@@ -892,6 +892,7 @@ html.nospd .tabs { grid-template-columns: repeat(4, 1fr); }
         <div><span>สาย K-Line</span><b id="kl-line">–</b></div>
         <div><span>ECU</span><b id="kl-st">ยังไม่ได้ปลุก</b></div>
       </div>
+      <p class="note" id="kl-hint"></p>
       <div class="acts">
         <button class="btn go" id="kl-auto" type="button">ปลุก ECU</button>
         <button class="btn" id="kl-mod" type="button">ผ่านโมดูล</button>
@@ -1554,7 +1555,7 @@ window.MAP_STORE = {
         '<button class="btn" type="button" id="bt-apoff">' + L("ปิด Wi-Fi ของบอร์ด", "Turn board Wi-Fi off") + '</button>' +
         '<button class="btn" type="button" id="bt-off">' + L("ตัดการเชื่อมต่อ", "Disconnect") + '</button></div>' +
         '<p class="note">' + L("ความเร็วมาจาก GPS ของมือถือ (ECU ของ Wave 110i ไม่ส่งความเร็ว) ได้ราว 1 ครั้งต่อวินาที วางมือถือให้เห็นท้องฟ้า · Wi-Fi ของบอร์ดใช้ตอนอยากเปิดหน้าเกจจากมือถือเครื่องอื่นหรือ iPhone (http://192.168.4.1) บอร์ดปิด Wi-Fi เองเมื่อแอปนี้ต่อบลูทูธ และปิดอีกครั้งเมื่อไม่มีใครต่อ 10 นาที",
-          "Speed comes from the phone's GPS (the Wave 110i ECU sends none), about once a second; keep the phone where it sees the sky · The board's Wi-Fi is for opening the gauge on another phone or an iPhone (http://192.168.4.1); the board turns it off once this app connects over Bluetooth, and again after 10 minutes with nobody on it") + '</p><p class="note" style="opacity:.6">' + L("รุ่นแอป ", "App build ") + "2026-11-19 22:50" + '</p></div>');
+          "Speed comes from the phone's GPS (the Wave 110i ECU sends none), about once a second; keep the phone where it sees the sky · The board's Wi-Fi is for opening the gauge on another phone or an iPhone (http://192.168.4.1); the board turns it off once this app connects over Bluetooth, and again after 10 minutes with nobody on it") + '</p><p class="note" style="opacity:.6">' + L("รุ่นแอป ", "App build ") + "2026-11-20 00:21" + '</p></div>');
       set.insertBefore(card, set.querySelector(".card"));
       card.querySelector("#bt-go").addEventListener("click", T.connect);
       card.querySelector("#bt-off").addEventListener("click", T.disconnect);
@@ -3984,13 +3985,25 @@ function buildLean() {} function paintMotion() {}
   async function status() {
     try {
       const d = await j("/api/status"), e = $("kl-line");
-      e.textContent = d.line >= 90 ? L("มีไฟรอ ✓", "Idle high ✓") : d.line <= 10 ? L("ไม่มีไฟ ✗", "No voltage ✗") : L("แกว่ง ", "Unstable ") + d.line + "%";
-      e.style.color = d.line >= 90 ? "var(--ok)" : d.line <= 10 ? "var(--crit)" : "var(--warn)";
-      $("kl-line").title = d.line <= 10 ? L("เช็คสายเหลือง, 12V ของโมดูล และ GND", "Check the yellow wire, the module 12 V and GND") : "";
+      // A high line alone proves little: the module pulls its K pin up by itself, so it reads high with no K-Line wire
+      // at all. The echo of the board's own wake frame shows the module has 12 V and TX/RX work; only the ECU waking up
+      // shows the wire to the ECU is connected.
+      const hi = d.line >= 90, echo = d.awake ? 1 : (d.echo === undefined ? -1 : d.echo);
+      e.textContent = d.line <= 10 ? L("ไม่มีไฟ ✗", "No voltage ✗") : !hi ? L("แกว่ง ", "Unstable ") + d.line + "%" :
+        d.awake ? L("ต่อ ECU แล้ว ✓", "ECU connected ✓") : echo === 1 ? L("โมดูลพร้อม ✓", "Module ready ✓") :
+        echo === 0 ? L("ไม่มีเสียงสะท้อน ✗", "No echo ✗") : L("สายไม่ช็อต", "Not shorted");
+      e.style.color = d.line <= 10 || (hi && echo === 0) ? "var(--crit)" : !hi ? "var(--warn)" : echo === 1 ? "var(--ok)" : "";
+      e.title = d.line <= 10 ? L("เช็คสายเหลือง, 12V ของโมดูล และ GND", "Check the yellow wire, the module 12 V and GND") :
+        !hi ? L("ไฟไม่นิ่ง: เช็คสายกราวด์และขั้วต่อ", "Unsteady: check ground and connectors") :
+        d.awake ? "" :
+        echo === 1 ? L("โมดูลมีไฟ 12V และ TX/RX ใช้ได้ · สายไป ECU ต่ออยู่ไหม ดูได้จาก ECU ตื่นเท่านั้น", "The module has 12 V and TX/RX work · only the ECU waking up shows the wire to the ECU is connected") :
+        echo === 0 ? L("บอร์ดส่งคำปลุกแล้วไม่ได้ยินเสียงตัวเอง: เช็คไฟ 12V ของโมดูล, สาย TX/RX และ GND (สายสูงอย่างเดียวไม่ได้แปลว่าต่อแล้ว โมดูลดึงขาขึ้นเอง)", "The board did not hear its own wake frame: check the module 12 V, TX/RX and GND (a high line alone does not mean connected: the module pulls it up itself)") :
+        L("ยังไม่ได้ลองปลุก: กด \"ปลุก ECU\" เพื่อทดสอบเสียงสะท้อน", "Not tried yet: press \"Wake ECU\" to test the echo");
+      if ($("kl-hint")) $("kl-hint").textContent = e.title;
       st(d.awake); showLog(d.log);
     } catch (e) { $("kl-line").textContent = L("ต่อบอร์ดไม่ได้", "Cannot reach the board"); }
   }
-  async function act(u) { busy(true); try { const d = await j(u); st(d.awake); showLog(d.log); } catch (e) {} busy(false); }
+  async function act(u) { busy(true); try { const d = await j(u); st(d.awake); showLog(d.log); } catch (e) {} busy(false); if (/wake/.test(u)) status(); }   // a wake also tested the echo
   function table(a) {
     let h = "";
     for (let i = 0; i < a.length; i++) {

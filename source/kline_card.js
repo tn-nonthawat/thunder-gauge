@@ -12,13 +12,25 @@
   async function status() {
     try {
       const d = await j("/api/status"), e = $("kl-line");
-      e.textContent = d.line >= 90 ? L("มีไฟรอ ✓", "Idle high ✓") : d.line <= 10 ? L("ไม่มีไฟ ✗", "No voltage ✗") : L("แกว่ง ", "Unstable ") + d.line + "%";
-      e.style.color = d.line >= 90 ? "var(--ok)" : d.line <= 10 ? "var(--crit)" : "var(--warn)";
-      $("kl-line").title = d.line <= 10 ? L("เช็คสายเหลือง, 12V ของโมดูล และ GND", "Check the yellow wire, the module 12 V and GND") : "";
+      // A high line alone proves little: the module pulls its K pin up by itself, so it reads high with no K-Line wire
+      // at all. The echo of the board's own wake frame shows the module has 12 V and TX/RX work; only the ECU waking up
+      // shows the wire to the ECU is connected.
+      const hi = d.line >= 90, echo = d.awake ? 1 : (d.echo === undefined ? -1 : d.echo);
+      e.textContent = d.line <= 10 ? L("ไม่มีไฟ ✗", "No voltage ✗") : !hi ? L("แกว่ง ", "Unstable ") + d.line + "%" :
+        d.awake ? L("ต่อ ECU แล้ว ✓", "ECU connected ✓") : echo === 1 ? L("โมดูลพร้อม ✓", "Module ready ✓") :
+        echo === 0 ? L("ไม่มีเสียงสะท้อน ✗", "No echo ✗") : L("สายไม่ช็อต", "Not shorted");
+      e.style.color = d.line <= 10 || (hi && echo === 0) ? "var(--crit)" : !hi ? "var(--warn)" : echo === 1 ? "var(--ok)" : "";
+      e.title = d.line <= 10 ? L("เช็คสายเหลือง, 12V ของโมดูล และ GND", "Check the yellow wire, the module 12 V and GND") :
+        !hi ? L("ไฟไม่นิ่ง: เช็คสายกราวด์และขั้วต่อ", "Unsteady: check ground and connectors") :
+        d.awake ? "" :
+        echo === 1 ? L("โมดูลมีไฟ 12V และ TX/RX ใช้ได้ · สายไป ECU ต่ออยู่ไหม ดูได้จาก ECU ตื่นเท่านั้น", "The module has 12 V and TX/RX work · only the ECU waking up shows the wire to the ECU is connected") :
+        echo === 0 ? L("บอร์ดส่งคำปลุกแล้วไม่ได้ยินเสียงตัวเอง: เช็คไฟ 12V ของโมดูล, สาย TX/RX และ GND (สายสูงอย่างเดียวไม่ได้แปลว่าต่อแล้ว โมดูลดึงขาขึ้นเอง)", "The board did not hear its own wake frame: check the module 12 V, TX/RX and GND (a high line alone does not mean connected: the module pulls it up itself)") :
+        L("ยังไม่ได้ลองปลุก: กด \"ปลุก ECU\" เพื่อทดสอบเสียงสะท้อน", "Not tried yet: press \"Wake ECU\" to test the echo");
+      if ($("kl-hint")) $("kl-hint").textContent = e.title;
       st(d.awake); showLog(d.log);
     } catch (e) { $("kl-line").textContent = L("ต่อบอร์ดไม่ได้", "Cannot reach the board"); }
   }
-  async function act(u) { busy(true); try { const d = await j(u); st(d.awake); showLog(d.log); } catch (e) {} busy(false); }
+  async function act(u) { busy(true); try { const d = await j(u); st(d.awake); showLog(d.log); } catch (e) {} busy(false); if (/wake/.test(u)) status(); }   // a wake also tested the echo
   function table(a) {
     let h = "";
     for (let i = 0; i < a.length; i++) {

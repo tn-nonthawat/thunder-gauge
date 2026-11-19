@@ -1040,9 +1040,11 @@ window.MAP_STORE = {
   var cur = null, cancelled = -1;          // the request waiting for its reply
   function onRes(e) {
     var dv = e.target.value;
-    T.rx.res++;
+    if (!PULL) T.rx.res++;
     try { T.rx.last = dv.byteLength + "B [" + [0, 1, 2, 3].map(function (k) { return k < dv.byteLength ? dv.getUint8(k) : "-"; }).join(",") + "]" + (cur ? " รอ id " + cur.id + " ชิ้น " + cur.next : " ไม่มีคำขอค้าง"); } catch (x) { T.rx.last = "อ่านไม่ได้: " + x; }
-    if (!cur || dv.byteLength < 4) return;
+    // pull mode: a read of RES also fires this event (Bluefy); pullRead() handles the piece, so taking it here too
+    // would move cur.next on without an ack and both sides would wait for each other
+    if (PULL || !cur || dv.byteLength < 4) return;
     var id = dv.getUint8(0), last = dv.getUint8(1), seq = dv.getUint16(2, true);
     if (id !== cur.id) {                          // a reply to a request this app already gave up on: tell the board to stop it
       if (id !== cancelled) { cancelled = id; ack(id, 0xFFFF); }
@@ -1552,7 +1554,7 @@ window.MAP_STORE = {
         '<button class="btn" type="button" id="bt-apoff">' + L("ปิด Wi-Fi ของบอร์ด", "Turn board Wi-Fi off") + '</button>' +
         '<button class="btn" type="button" id="bt-off">' + L("ตัดการเชื่อมต่อ", "Disconnect") + '</button></div>' +
         '<p class="note">' + L("ความเร็วมาจาก GPS ของมือถือ (ECU ของ Wave 110i ไม่ส่งความเร็ว) ได้ราว 1 ครั้งต่อวินาที วางมือถือให้เห็นท้องฟ้า · Wi-Fi ของบอร์ดใช้ตอนอยากเปิดหน้าเกจจากมือถือเครื่องอื่นหรือ iPhone (http://192.168.4.1) บอร์ดปิด Wi-Fi เองเมื่อแอปนี้ต่อบลูทูธ และปิดอีกครั้งเมื่อไม่มีใครต่อ 10 นาที",
-          "Speed comes from the phone's GPS (the Wave 110i ECU sends none), about once a second; keep the phone where it sees the sky · The board's Wi-Fi is for opening the gauge on another phone or an iPhone (http://192.168.4.1); the board turns it off once this app connects over Bluetooth, and again after 10 minutes with nobody on it") + '</p><p class="note" style="opacity:.6">' + L("รุ่นแอป ", "App build ") + "2026-11-19 22:41" + '</p></div>');
+          "Speed comes from the phone's GPS (the Wave 110i ECU sends none), about once a second; keep the phone where it sees the sky · The board's Wi-Fi is for opening the gauge on another phone or an iPhone (http://192.168.4.1); the board turns it off once this app connects over Bluetooth, and again after 10 minutes with nobody on it") + '</p><p class="note" style="opacity:.6">' + L("รุ่นแอป ", "App build ") + "2026-11-19 22:50" + '</p></div>');
       set.insertBefore(card, set.querySelector(".card"));
       card.querySelector("#bt-go").addEventListener("click", T.connect);
       card.querySelector("#bt-off").addEventListener("click", T.disconnect);

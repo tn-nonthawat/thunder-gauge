@@ -55,9 +55,11 @@
   var cur = null, cancelled = -1;          // the request waiting for its reply
   function onRes(e) {
     var dv = e.target.value;
-    T.rx.res++;
+    if (!PULL) T.rx.res++;
     try { T.rx.last = dv.byteLength + "B [" + [0, 1, 2, 3].map(function (k) { return k < dv.byteLength ? dv.getUint8(k) : "-"; }).join(",") + "]" + (cur ? " รอ id " + cur.id + " ชิ้น " + cur.next : " ไม่มีคำขอค้าง"); } catch (x) { T.rx.last = "อ่านไม่ได้: " + x; }
-    if (!cur || dv.byteLength < 4) return;
+    // pull mode: a read of RES also fires this event (Bluefy); pullRead() handles the piece, so taking it here too
+    // would move cur.next on without an ack and both sides would wait for each other
+    if (PULL || !cur || dv.byteLength < 4) return;
     var id = dv.getUint8(0), last = dv.getUint8(1), seq = dv.getUint16(2, true);
     if (id !== cur.id) {                          // a reply to a request this app already gave up on: tell the board to stop it
       if (id !== cancelled) { cancelled = id; ack(id, 0xFFFF); }

@@ -25,7 +25,7 @@
 #define TG_BLE 1               // setup wizard: ask Wi-Fi or Bluetooth, and the Bluetooth PIN
 
 const char* AP_SSID = "ThunderGauge-Lite";
-const char* AP_PASS = "thunder123";   // test password, change later
+const char* AP_PASS = "thunder123";   // full build default only; the Lite Wi-Fi is open until the owner sets a password
 
 TgServer server(80);
 
@@ -113,7 +113,7 @@ void apStart(const char* why) {
   apSince = millis();
   if (apOn) return;
   WiFi.mode(WIFI_AP);
-  WiFi.softAP(suSsid.c_str(), suPass.c_str());
+  WiFi.softAP(suSsid.c_str(), suPass.length() ? suPass.c_str() : nullptr);   // no password yet = open Wi-Fi
   WiFi.setSleep(false);                 // no power-save naps between packets = lower latency
   WiFi.setTxPower(WIFI_POWER_11dBm);    // C3 super-minis misbehave at full power
   apOn = true;

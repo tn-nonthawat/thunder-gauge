@@ -114,7 +114,7 @@ def qr_svg(m):
             'style="display:block;margin:6px auto 2px;background:#fff;border-radius:8px"><path d="%s" fill="#000"/></svg>' % (n, n, d))
 appcard = ('    <div class="card" id="app-card">\n'
            '      <h2>แอปบลูทูธ + ความเร็ว GPS</h2>\n'
-           '      <p class="note">ใช้มือถือ Android กับ Chrome: แอปต่อเกจทางบลูทูธ และอ่านความเร็วจาก GPS ของมือถือ (ECU ไม่ส่งความเร็ว) เปิดลิงก์ตอนมีอินเทอร์เน็ต แล้วกด "เพิ่มลงหน้าจอหลัก" หลังจากนั้นแอปใช้ได้แม้ไม่มีเน็ต · ครั้งแรกจับคู่ด้วย PIN ที่ตั้งในตัวช่วยตั้งค่า (เริ่มต้น 123456)</p>\n'
+           '      <p class="note">ใช้มือถือ Android กับ Chrome: แอปต่อเกจทางบลูทูธ และอ่านความเร็วจาก GPS ของมือถือ (ECU ไม่ส่งความเร็ว) เปิดลิงก์ตอนมีอินเทอร์เน็ต แล้วกด "เพิ่มลงหน้าจอหลัก" หลังจากนั้นแอปใช้ได้แม้ไม่มีเน็ต · ครั้งแรกไม่ต้องใส่ PIN (ถ้าตั้ง PIN ไว้แล้ว มือถือจะถามครั้งเดียว)</p>\n'
            + ('      ' + qr_svg(QR) + '\n' if QR else '') +
            '      <p class="note" style="text-align:center"><code id="app-url">' + APP_URL + '</code></p>\n'
            '      <div class="acts"><a class="btn go" href="' + APP_URL + '" target="_blank" rel="noopener">เปิดแอป</a>'
@@ -126,10 +126,19 @@ b += ('\n<script>document.getElementById("app-copy").addEventListener("click",fu
       'ok=function(){b.textContent=document.documentElement.lang==="en"?"Copied":"คัดลอกแล้ว";};'
       'if(navigator.clipboard&&window.isSecureContext)navigator.clipboard.writeText(u).then(ok);'
       'else{var t=document.createElement("textarea");t.value=u;document.body.appendChild(t);t.select();try{document.execCommand("copy");ok();}catch(e){}t.remove();}});</script>')
+# reminder while the board has no Wi-Fi password and/or Bluetooth PIN (a new board connects with neither)
+b += ('\n<script>fetch("/api/setup/look",{cache:"no-store"}).then(function(r){return r.json();}).then(function(j){'
+      'if(!j.done||!(j.nopass||j.nopin))return;var en=document.documentElement.lang==="en",'
+      'what=j.nopass&&j.nopin?(en?"a Wi-Fi password and a Bluetooth PIN":"รหัส Wi-Fi และ PIN บลูทูธ"):j.nopass?(en?"a Wi-Fi password":"รหัส Wi-Fi"):(en?"a Bluetooth PIN":"PIN บลูทูธ"),'
+      'd=document.createElement("div");d.setAttribute("role","alert");'
+      'd.style.cssText="margin:10px 0;padding:10px 14px;border:1px solid var(--warn);border-radius:14px;background:var(--panel);font-size:13px;line-height:1.4";'
+      'd.innerHTML="<b>"+(en?"Lock your gauge":"ตั้งรหัสของเกจ")+"</b><br>"+(en?"The gauge has no "+what+" yet, so anyone nearby can connect. ":"เกจยังไม่มี"+what+" คนแถวนั้นต่อเกจได้ ")'
+      '+"<a href=\\"/setup\\" style=\\"color:var(--accent);font-weight:600\\">"+(en?"Set it":"ตั้งรหัส")+"</a>";'
+      'var h=document.querySelector("header");if(h)h.after(d);}).catch(function(){});</script>')
 assert b.count('"ภาษา": "Language", ') == 1
 b = b.replace('"ภาษา": "Language", ', '"ภาษา": "Language", "แอปบลูทูธ + ความเร็ว GPS": "Bluetooth app + GPS speed", '
-              '"ใช้มือถือ Android กับ Chrome: แอปต่อเกจทางบลูทูธ และอ่านความเร็วจาก GPS ของมือถือ (ECU ไม่ส่งความเร็ว) เปิดลิงก์ตอนมีอินเทอร์เน็ต แล้วกด \\"เพิ่มลงหน้าจอหลัก\\" หลังจากนั้นแอปใช้ได้แม้ไม่มีเน็ต · ครั้งแรกจับคู่ด้วย PIN ที่ตั้งในตัวช่วยตั้งค่า (เริ่มต้น 123456)": '
-              '"Android phone with Chrome: the app reaches the gauge over Bluetooth and reads road speed from the phone\'s GPS (the ECU sends none). Open the link while you have internet and tap \\"Add to home screen\\"; after that it works without internet · First pairing: the PIN from the setup wizard (default 123456)", '
+              '"ใช้มือถือ Android กับ Chrome: แอปต่อเกจทางบลูทูธ และอ่านความเร็วจาก GPS ของมือถือ (ECU ไม่ส่งความเร็ว) เปิดลิงก์ตอนมีอินเทอร์เน็ต แล้วกด \\"เพิ่มลงหน้าจอหลัก\\" หลังจากนั้นแอปใช้ได้แม้ไม่มีเน็ต · ครั้งแรกไม่ต้องใส่ PIN (ถ้าตั้ง PIN ไว้แล้ว มือถือจะถามครั้งเดียว)": '
+              '"Android phone with Chrome: the app reaches the gauge over Bluetooth and reads road speed from the phone\'s GPS (the ECU sends none). Open the link while you have internet and tap \\"Add to home screen\\"; after that it works without internet · No PIN the first time (once a PIN is set, the phone asks for it once)", '
               '"เปิดแอป": "Open the app", "คัดลอกลิงก์": "Copy link", ', 1)
 page = ('<!doctype html><html lang="th"><head><meta charset="utf-8">'
         '<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">'

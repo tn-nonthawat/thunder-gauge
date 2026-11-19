@@ -31,7 +31,7 @@ The ECU side is read-only: the firmware sends only the wake/init frames and read
 ## Install / update from an Android phone
 
 1. On the phone, download the firmware: [thunder-gauge-lite.bin (v0.9-beta)](https://github.com/tn-nonthawat/thunder-gauge/releases/download/v0.9-beta/thunder-gauge-lite.bin). Newer versions will be on the [Releases](https://github.com/tn-nonthawat/thunder-gauge/releases) page.
-2. Turn the key on, join the Wi-Fi `ThunderGauge-Lite` (password `thunder123` until you change it). If Android says the network has no internet, choose to stay connected.
+2. Turn the key on, join the Wi-Fi `ThunderGauge-Lite` (no password on a new board; it has the one you set in the setup page after that). If Android says the network has no internet, choose to stay connected.
 3. Open `http://192.168.4.1/update` in the browser (or System tab → อัปเดตเฟิร์มแวร์), pick the .bin and upload.
 4. The board restarts by itself. If the upload breaks off, the old firmware keeps running.
 
@@ -56,7 +56,7 @@ Why: the board's own page is plain http (`192.168.4.1`), and Chrome does not let
 <img src="app/qr.png" width="160" alt="QR code: the Thunder Gauge app">
 
 1. On the phone (Android, Chrome), open the app once with internet: https://tn-nonthawat.github.io/thunder-gauge/app/ (also linked from the gauge's Wi-Fi page, Settings → แอปบลูทูธ). Chrome can add it to the home screen; after that it also opens with no internet.
-2. Turn the key on, tap "เชื่อมต่อ", pick the gauge and type the PIN: `123456` the first time. On a new board the setup page then opens inside the app (set your own PIN there).
+2. Turn the key on, tap "เชื่อมต่อ" and pick the gauge. A new board has no PIN and no Wi-Fi password, so nothing to type. The setup page then opens inside the app: set your own Wi-Fi password and Bluetooth PIN there, or later (the app keeps reminding you until you do; once a PIN is set, each phone asks for it once).
 3. Allow location so the app can read the speed from the GPS.
 
 Once the app is connected, the board turns its Wi-Fi off by itself (unless a phone is on the Wi-Fi). Nothing to choose: Wi-Fi users who never open the app keep Wi-Fi as before.

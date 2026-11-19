@@ -2,8 +2,9 @@
 // Android, see app/) talks to the board over BLE instead of the board's Wi-Fi. Being on https lets the page use the
 // phone's own GPS for road speed, which this ECU does not report.
 //
-// One GATT service, every characteristic needs an encrypted, authenticated link: the phone pairs once with the
-// 6-digit PIN from the setup wizard (setup.txt pin=), so nobody nearby can change settings or load firmware.
+// One GATT service. With a PIN set in the setup wizard (setup.txt pin=), every characteristic needs an encrypted,
+// authenticated link: the phone pairs once with that 6-digit PIN, so nobody nearby can change settings or load
+// firmware. A new board has no PIN: phones connect without pairing until the owner sets one (the app reminds).
 //   LIVE (read, notify): newest ECU answer, binary, about 5 times a second:
 //        [1, awake, age lo, age hi, live table, O2 table, n, d0..dn-1, n, o..., n, s...]   (age in ms, capped at 65535)
 //   REQ  (write): a request in pieces [kind, id, seq lo, seq hi, data...]: kind 1 = more follows, 2 = last piece,
@@ -36,7 +37,8 @@
 BLEServer* blSrv = nullptr;
 BLECharacteristic *blLive = nullptr, *blReq = nullptr, *blRes = nullptr, *blOta = nullptr;
 volatile bool blConn = false;
-volatile bool blHello = false;   // a paired phone wrote hello (only an authenticated link can): the .ino turns Wi-Fi off
+volatile bool blGreeted = false; volatile uint32_t blConnAt = 0; volatile uint8_t blEvt = 0;   // this link said hello; when it came; connect/disconnect seen (logged from loop())
+volatile bool blHello = false;   // a phone wrote hello (with a PIN set: only a paired one can): the .ino turns Wi-Fi off
 volatile uint16_t blConnId = 0;
 uint32_t blRestartAt = 0;
 
@@ -53,9 +55,9 @@ uint32_t blOtaSize = 0, blOtaDone = 0; bool blOtaOn = false;
 void blOtaStatus(const String& s) { if (blOta) blOta->setValue(s); }
 
 class BlSrvCb : public BLEServerCallbacks {
-  void onConnect(BLEServer* s, ble_gap_conn_desc* d) override { blConnId = d->conn_handle; blConn = true; }
+  void onConnect(BLEServer* s, ble_gap_conn_desc* d) override { blConnId = d->conn_handle; blConnAt = millis(); blGreeted = false; blConn = true; blEvt |= 1; }
   void onDisconnect(BLEServer* s, ble_gap_conn_desc* d) override {
-    blConn = false;
+    blConn = false; blEvt |= 2;
     if (blOtaOn) { Update.abort(); blOtaOn = false; otaBusy = false; blOtaStatus("err หลุดการเชื่อมต่อ"); }
   }
 };
@@ -67,7 +69,7 @@ class BlReqCb : public BLECharacteristicCallbacks {
     if (n < 4) return;
     uint8_t kind = p[0], id = p[1]; uint16_t seq = p[2] | (p[3] << 8);
     if (kind == 3) { blAckId = id; blAckSeq = seq; blAckNew = true; return; }
-    if (kind == 4) { blHello = true; return; }   // hello: the phone pairs here, before it subscribes
+    if (kind == 4) { blHello = true; blGreeted = true; return; }   // hello: the phone pairs here, before it subscribes
     if (kind != 1 && kind != 2) return;
     if (blInReady) return;                       // loop() has not taken the last one yet: the phone retries
     if (seq == 0) { blIn = ""; blInId = id; blInSeq = 0; }
@@ -116,16 +118,18 @@ void bleBegin(const String& name, const String& pin) {
   if (nm.length() > 20) nm = nm.substring(0, 20);
   BLEDevice::init(nm);
   BLEDevice::setMTU(247);                        // 244-byte notifications when the phone agrees
-  BLESecurity* sec = new BLESecurity();
-  uint32_t pk = (uint32_t)pin.toInt(); if (pin.length() != 6 || pk > 999999) pk = 123456;
-  sec->setPassKey(true, pk);                     // static PIN: the board has no screen, the phone types it in
-  sec->setCapability(ESP_IO_CAP_OUT);
-  sec->setAuthenticationMode(true, true, true);  // bond, MITM (PIN prompt), LE secure connections
+  bool locked = pin.length() == 6;                // no PIN yet: open link, nothing to type on the first connection
+  if (locked) {
+    BLESecurity* sec = new BLESecurity();
+    sec->setPassKey(true, (uint32_t)pin.toInt());  // static PIN: the board has no screen, the phone types it in
+    sec->setCapability(ESP_IO_CAP_OUT);
+    sec->setAuthenticationMode(true, true, true);  // bond, MITM (PIN prompt), LE secure connections
+  }
   blSrv = BLEDevice::createServer();
   blSrv->setCallbacks(new BlSrvCb());
   blSrv->advertiseOnDisconnect(true);
   BLEService* svc = blSrv->createService(BL_SVC);
-  const uint32_t RA = BLECharacteristic::PROPERTY_READ_AUTHEN, WA = BLECharacteristic::PROPERTY_WRITE_AUTHEN;
+  const uint32_t RA = locked ? BLECharacteristic::PROPERTY_READ_AUTHEN : 0, WA = locked ? BLECharacteristic::PROPERTY_WRITE_AUTHEN : 0;
   blLive = svc->createCharacteristic(BL_LIVE, BLECharacteristic::PROPERTY_READ | BLECharacteristic::PROPERTY_NOTIFY | RA);
   blReq = svc->createCharacteristic(BL_REQ, BLECharacteristic::PROPERTY_WRITE | WA);
   blRes = svc->createCharacteristic(BL_RES, BLECharacteristic::PROPERTY_NOTIFY | BLECharacteristic::PROPERTY_READ | RA);
@@ -138,7 +142,7 @@ void bleBegin(const String& name, const String& pin) {
   adv->addServiceUUID(BL_SVC);
   adv->setScanResponse(true);                    // the name goes in the scan reply: the 128-bit service id fills the advert
   BLEDevice::startAdvertising();
-  logLine("บลูทูธพร้อม: " + nm);
+  logLine("บลูทูธพร้อม: " + nm + (locked ? " (ต้องใช้ PIN)" : " (ยังไม่ตั้ง PIN)"));
 }
 
 // ---------------------------------------------------------------- loop side
@@ -219,6 +223,18 @@ void blLiveTick() {
 
 void bleLoop() {
   if (blRestartAt && (int32_t)(millis() - blRestartAt) >= 0) ESP.restart();
+  if (blEvt) {                                   // connect / disconnect, logged here (not from the BLE task)
+    uint8_t e = blEvt; blEvt = 0;
+    if (e & 1) logLine("บลูทูธ: มีมือถือต่อเข้ามา");
+    if ((e & 2) && !blConn) logLine("บลูทูธ: มือถือหลุด กลับไปรอให้ต่อ");
+  }
+  // A link that never says hello is not the app (e.g. the phone's own Bluetooth holding an old connection). Only one
+  // phone can be connected, so it would lock the app out: drop it after 15 s and advertise again.
+  if (blConn && !blGreeted && millis() - blConnAt > 15000) {
+    blGreeted = true;
+    logLine("บลูทูธ: เครื่องที่ต่อค้างไม่ได้เปิดแอป ตัดทิ้งให้เครื่องอื่นต่อได้");
+    blSrv->disconnect(blConnId);
+  }
   if (blInReady && !blOutBusy) blTakeRequest();
   blSendTick();
   blLiveTick();

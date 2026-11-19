@@ -91,10 +91,12 @@ ui_sync = '''<script>
 </script>
 '''
 app_src = b                       # the phone app starts from the same font-less page (no internet on the road either)
-b = b.replace(flag, flag + store + ui_sync, 1)
+# Wi-Fi page: every feature of the phone app is there (speed dial, timer tab); TG_NOGPS = it has no speed source
+# (plain http: no phone GPS), so the GPS badge and the timer tab tell the rider to use the Bluetooth app for speed.
+b = b.replace(flag, flag + '<script>window.TG_GPS = true; window.TG_NOGPS = true;</script>\n' + store + ui_sync, 1)
 
 import ecu_board
-b = strip_spd(strip_full(ecu_board.patch(b, lite=True)))
+b = strip_full(ecu_board.patch(b, lite=True))      # SPD parts stay (see TG_NOGPS)
 # Wi-Fi page: a card that points to the Bluetooth app (speed from the phone's GPS). The board has no internet, so the
 # link opens only with mobile data or another Wi-Fi; the copy button falls back to execCommand (plain http page).
 APP_URL = 'https://tn-nonthawat.github.io/thunder-gauge/app/'   # GitHub Pages of the public repo (the app/ folder)

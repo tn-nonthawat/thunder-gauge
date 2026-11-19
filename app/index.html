@@ -131,6 +131,10 @@ a.btn { text-decoration: none; display: inline-flex; align-items: center; justif
 .btn.danger { color: var(--crit); border-color: var(--crit); }
 .btn.small { font-size: 12.5px; padding: 5px 10px; text-transform: none; letter-spacing: 0; }
 .btn:disabled { opacity: .4; cursor: default; }
+.spd-ph { height: 100%; align-items: center; justify-content: center; text-align: center; gap: 6px; }
+.spd-ph-v { font: 700 44px/1 var(--font-display); color: var(--dim); }
+.spd-ph b { font-weight: 600; }
+.spd-ph span { font-size: 12.5px; color: var(--dim); }
 .kv { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
 .kv div { display: flex; flex-direction: column; min-width: 0; }
 .kv span { font-size: 11.5px; color: var(--dim); }
@@ -1555,7 +1559,7 @@ window.MAP_STORE = {
         '<button class="btn" type="button" id="bt-apoff">' + L("ปิด Wi-Fi ของบอร์ด", "Turn board Wi-Fi off") + '</button>' +
         '<button class="btn" type="button" id="bt-off">' + L("ตัดการเชื่อมต่อ", "Disconnect") + '</button></div>' +
         '<p class="note">' + L("ความเร็วมาจาก GPS ของมือถือ (ECU ของ Wave 110i ไม่ส่งความเร็ว) ได้ราว 1 ครั้งต่อวินาที วางมือถือให้เห็นท้องฟ้า · Wi-Fi ของบอร์ดใช้ตอนอยากเปิดหน้าเกจจากมือถือเครื่องอื่นหรือ iPhone (http://192.168.4.1) บอร์ดปิด Wi-Fi เองเมื่อแอปนี้ต่อบลูทูธ และปิดอีกครั้งเมื่อไม่มีใครต่อ 10 นาที",
-          "Speed comes from the phone's GPS (the Wave 110i ECU sends none), about once a second; keep the phone where it sees the sky · The board's Wi-Fi is for opening the gauge on another phone or an iPhone (http://192.168.4.1); the board turns it off once this app connects over Bluetooth, and again after 10 minutes with nobody on it") + '</p><p class="note" style="opacity:.6">' + L("รุ่นแอป ", "App build ") + "2026-11-20 00:47" + '</p></div>');
+          "Speed comes from the phone's GPS (the Wave 110i ECU sends none), about once a second; keep the phone where it sees the sky · The board's Wi-Fi is for opening the gauge on another phone or an iPhone (http://192.168.4.1); the board turns it off once this app connects over Bluetooth, and again after 10 minutes with nobody on it") + '</p><p class="note" style="opacity:.6">' + L("รุ่นแอป ", "App build ") + "2026-11-20 01:06" + '</p></div>');
       var first = set.querySelector(".card");   // the settings page may already be in groups: the card goes next to the first card, wherever it is
       if (first) first.parentNode.insertBefore(card, first); else set.appendChild(card);
       card.querySelector("#bt-go").addEventListener("click", T.connect);
@@ -1614,7 +1618,7 @@ window.MAP_STORE = {
     "ECU ตอบกลับ": "ECU online", "ภาษา": "Language", "จับเวลาจาก GPS ของมือถือ (ราว 1 ครั้งต่อวินาที) แม่นน้อยกว่าโมดูล GPS ใช้เทียบกับรถตัวเองได้ · ควรวิ่งในสนามหรือพื้นที่ปิดเท่านั้น": "Timed from the phone's GPS (about once a second): less exact than a GPS module, fine for comparing your own bike · Only on a track or closed area", "แอปนี้ต่อบอร์ดทางบลูทูธ ดูสถานะและเปิด Wi-Fi ของบอร์ดได้ที่ตั้งค่า → บลูทูธ · GPS มือถือ": "This app reaches the board over Bluetooth. Status and the board's Wi-Fi: Settings → Bluetooth · phone GPS", "อัปเดตเฟิร์มแวร์": "Firmware update", "อัปโปรแกรมใหม่ลงกล่องผ่านบลูทูธ ได้เลย ไม่ต้องถอดกล่องหรือต่อสาย · ดาวน์โหลดไฟล์ .bin ล่าสุดจาก GitHub (Releases) ลงมือถือก่อน แล้วกดปุ่มด้านล่าง · เฟิร์มแวร์ที่ใช้อยู่:": "Load new firmware onto the box over Bluetooth, no need to remove it or run a cable · Download the latest .bin from GitHub (Releases) to your phone first, then tap the button below · Current firmware:", "ตั้งค่าเกจ": "Gauge setup", "ชื่อเกจ ภาษา ชื่อและรหัสผ่าน Wi-Fi ของกล่อง และเช็คการต่อสาย K-Line · ค่าพวกนี้เก็บไว้ในกล่อง ใช้กับทุกมือถือ · ถ้าเปลี่ยน Wi-Fi กล่องจะรีสตาร์ท ให้มือถือต่อ Wi-Fi ใหม่": "Gauge name, language, Wi-Fi name and password of the box, and a K-Line wiring check · Stored in the box, so they apply to every phone · Changing the Wi-Fi restarts the box; reconnect your phone to the new Wi-Fi", "เปิดตัวช่วยตั้งค่า": "Open setup wizard", "ความหมายรหัสเป็นแนวทางจากระบบ PGM-FI ของ Honda · กล่องนี้อ่านอย่างเดียว ไม่ลบรหัส ให้จดรหัสแล้วแก้ต้นเหตุ": "Code meanings follow Honda PGM-FI as a guide · This gauge only reads, it never clears codes. Note the code and fix the cause.", "ตาราง D1 (สถานะสวิตช์ · กำลังทดสอบ): เปิดกุญแจรอปั๊มหยุด แล้วเข้าเกียร์ออกเกียร์ ดูว่าไบต์ไหนเปลี่ยน": "Table D1 (switch status · testing): key on, wait for the pump to stop, then shift in and out of neutral and see which byte changes", "ทดสอบ K-Line": "K-Line test", "อ่านอย่างเดียว": "Read only", "การ์ดนี้ขึ้นเพราะบอร์ดปลุก ECU ไม่ติด ถ้า ECU ตอบปกติ การ์ดจะไม่แสดง": "This card shows because the board could not wake the ECU. When the ECU answers it stays hidden.", "บิดกุญแจ ยังไม่ต้องสตาร์ท แล้วกด \"ปลุก ECU\" · ส่งแค่คำสั่งปลุกและขออ่านข้อมูล ไม่เขียนอะไรลงกล่อง": "Turn the key on without starting, then tap \"Wake ECU\" · Only wake and read requests are sent, nothing is written to the ECU", "สาย K-Line": "K-Line wire", "ยังไม่ได้ปลุก": "Not woken yet", "ปลุก ECU": "Wake ECU", "ผ่านโมดูล": "Via module", "ทรานซิสเตอร์": "Transistor", "ตารางที่จะอ่าน": "Table to read", "0x17 · ค่าหลัก (Wave 110i)": "0x17 · main values (Wave 110i)", "0x00 · รหัสรุ่นกล่อง": "0x00 · ECU model code", "อ่าน 1 ครั้ง": "Read once", "อ่านต่อเนื่อง": "Read continuously", "ลองบิดคันเร่งหรือสตาร์ทเครื่อง ไบต์ที่เปลี่ยนจะเป็นสีเหลือง": "Try the throttle or start the engine; bytes that change turn yellow", "ไบต์": "Byte", "คู่ ×256": "Pair ×256", "คัดลอกผลทั้งหมด": "Copy all results", "เช็คสายใหม่": "Check wire again", "ล้างบันทึก": "Clear log",  "แบบหน้าปัด": "Dial face", "แบบดวงไฟ": "LED style", "แคปซูล": "Pill", "แถบต่อกัน": "Bar", "จุดกลม": "Dots", "ยาวได้เท่านี้ ไม่ให้ชื่อทับป้ายสถานะ ECU บนจอมือถือ": "That is the limit, so the name does not run into the ECU badge on a phone", "ยาวได้เท่านี้ ไม่ให้ข้อความยาวเกินหัวจอ": "That is the limit, so the text fits the header", "คำใต้ชื่อ": "Subtitle", "กลับ": "Back", "ช่วงที่ขี่บ่อย": "Where you ride most", "น้ำมันที่ฉีด (ms)": "Fuel injected (ms)", "กล่องเติม/ลดน้ำมัน": "ECU fuel correction", "AFR (Wideband)": "AFR (wideband)", "ขี่อยู่ช่วงรอบกับคันเร่งไหนนานที่สุด ช่องยิ่งออกแดง ยิ่งใช้บ่อย": "Which rpm and throttle you ride at most. Redder cell = more time there.", "กล่องฉีดน้ำมันนานกี่ ms ในแต่ละช่วง ตัวเลขยิ่งมาก น้ำมันยิ่งเยอะ": "How long the ECU opens the injector in each range. Bigger number = more fuel.", "กล่องจุดระเบิดก่อนลูกสูบขึ้นสุดกี่องศาในแต่ละช่วง": "How many degrees before top dead centre the ECU fires the plug in each range.", "กล่องเติม (+) หรือลด (−) น้ำมันเองตามเซนเซอร์ O2 ถ้าบวกเยอะ แปลว่าช่วงนั้นบาง": "The ECU adds (+) or removes (−) fuel from the O2 sensor. A big plus means that range runs lean.", "อัตราส่วนอากาศต่อน้ำมันจริงจาก Wideband ในแต่ละช่วง 14.7 = พอดี น้อยกว่า = หนา มากกว่า = บาง": "Real air-fuel ratio from the wideband in each range. 14.7 = ideal, lower = rich, higher = lean.", "อ่านตารางยังไง": "How to read the map", "แถว = รอบเครื่อง · คอลัมน์ = คันเร่ง %": "Rows = rpm · columns = throttle %", "ระหว่างขี่ เกจเก็บค่าเฉลี่ยแยกตามช่วงรอบกับคันเร่งที่ขี่อยู่ตอนนั้น": "While you ride, the gauge averages each value by the rpm and throttle you are at.", "ช่องที่มีกรอบคือช่วงที่ขี่อยู่ตอนนี้ ช่อง \"–\" คือยังไม่เคยขี่ช่วงนั้น": "The outlined cell is where you are now. \"–\" means you have not ridden there yet.", "ตารางเก็บไว้ในกล่องเกจ ปิดกุญแจแล้วไม่หาย ทริปถัดไปเก็บต่อ": "The map is kept on the gauge board, survives key-off and keeps filling on the next ride.", "เริ่มดูอันนี้ก่อน": "Start here", "นับว่าขี่อยู่ช่วงไหนนานที่สุด ช่องยิ่งออกแดง ยิ่งใช้บ่อย": "Counts where you spend the most time. Redder = more often.", "ใช้บอกด้วยว่าค่าในโหมดอื่นเชื่อได้แค่ไหน ช่องที่นับได้น้อย ค่าเฉลี่ยยังไม่นิ่ง": "It also tells how far to trust the other views: a cell with few samples is not settled yet.", "เวลาเปิดหัวฉีดเฉลี่ย": "Average injector open time", "ยิ่งรอบสูงหรือบิดคันเร่งมาก ตัวเลขยิ่งมาก เป็นเรื่องปกติ": "Higher rpm or more throttle gives a bigger number. That is normal.", "เป็นค่าที่กล่องสั่งจริง อ่านอย่างเดียว เกจไม่ได้แก้อะไรในกล่อง": "It is what the ECU really fires. Read only: the gauge changes nothing in the ECU.", "จุดระเบิดก่อนลูกสูบขึ้นสุดกี่องศา": "Degrees before top dead centre", "รอบสูงองศาจะมากขึ้น ใช้เทียบก่อนกับหลังแต่งรถ": "Advance rises with rpm. Use it to compare before and after a mod.", "ค่าชดเชยน้ำมัน (fuel trim) ตาม O2": "Fuel trim from the O2 sensor", "บวก = กล่องเติมน้ำมันเพราะช่วงนั้นบาง ลบ = กล่องลดน้ำมันเพราะหนา": "Plus = the ECU adds fuel because it runs lean. Minus = it removes fuel because it runs rich.", "ใกล้ 0 (±5%) คือปกติ ถ้าบวกเกิน 10% หลายช่อง ควรเช็กไส้กรอง หัวฉีด หรือปั๊มติ๊ก": "Near 0 (±5%) is normal. Over +10% in many cells: check the fuel filter, injector or pump.", "กล่องชดเชยเฉพาะตอน Closed Loop ช่วงบิดสุดจึงไม่มีค่า": "The ECU only corrects in closed loop, so heavy throttle stays blank.", "ปุ่มล้างตาราง": "Clear map button", "เริ่มเก็บใหม่": "Start over", "กดหลังเปลี่ยนท่อ กรองอากาศ หรือหัวฉีด จะได้เห็นผลของของใหม่ ไม่ปนกับข้อมูลเก่า": "Use it after changing the exhaust, air filter or injector, so the new parts are not mixed with old data.", "ค่าในตาราง": "Map value", "ไอคอนและชื่อแอพ": "App icon and name", "ชื่อแอพ": "App name", "ไอคอนแอพ": "App icon", "ธันเดอร์": "Thunder", "สายฟ้าส้ม": "Orange bolt", "หน้าปัด": "Dial", "ตัวอักษร": "Letter", "รูปของฉัน": "My picture", "เปลี่ยนรูป": "New picture", "คืนค่าเดิม": "Reset", "ชื่อและไอคอนนี้ใช้ตอนกด \"เพิ่มไปยังหน้าจอโฮม\" ในเบราว์เซอร์ ถ้าเพิ่มไว้แล้ว ให้ลบไอคอนเดิมออกจากหน้าจอแล้วเพิ่มใหม่ · จำไว้ในมือถือเครื่องนี้": "The browser uses this name and icon when you tap \"Add to Home Screen\". If you already added it, remove the old icon and add it again · Saved on this phone", "ตั้งค่า": "Settings", "‹ กลับ": "‹ Back", "หน้า": "Pages",
     "ขับขี่": "Ride", "เซ็นเซอร์": "Sensors", "วิเคราะห์": "Analysis", "กราฟ": "Graph", "จับเวลา": "Timer", "ระบบ": "System", "เช็กโค้ด": "Codes",
     "ตัวอย่าง:": "Demo:", "ตัวเลขทั้งหมดเป็นข้อมูลจำลอง ยังไม่ได้อ่านจากรถจริง": "All numbers are simulated, not read from a real bike yet.",
-    "ความเร็ว": "Speed", "รอบเครื่อง": "Engine speed",
+    "ความเร็ว": "Speed", "ไม่มี GPS · ความเร็วใช้ได้ในแอปบลูทูธ": "No GPS · speed works in the Bluetooth app", "รอบเครื่อง": "Engine speed",
     "เกียร์": "Gear", "ไฟเตือนเปลี่ยนเกียร์": "Shift light",
     "หนา": "Rich", "เน้นแรง": "Power", "กำลัง": "Power", "ประหยัด": "Economy", "บาง": "Lean", "พอดี": "Ideal", "หนามาก": "Very rich", "Closed Loop และ O2 สลับหนา/บางภายใน 10 วินาที": "Closed loop and the O2 flipped rich/lean in the last 10 s",
     "กล่องคุมส่วนผสมรอบ 14.7 ได้ เซนเซอร์ทำงานดี เป็นสถานะที่ควรเห็นบ่อยที่สุด": "The ECU holds the mixture around 14.7 and the sensor works. You should see this most of the time.",
@@ -3074,9 +3078,13 @@ window.MAP_STORE = {
     sec.classList.toggle("editing", ed);
     const tmp = document.createElement("div");
     for (const m of [DIAL_EL, SIDE_EL, MIR_EL, ENG_EL]) for (const k in m) if (!CL.some(c => c[0] === k)) delete m[k];
+    const spdPh = w => {                     // the set-aside speed card keeps its place: same size, saying there is no GPS here
+      const cw = document.createElement("div"); cw.className = "cw s" + w; cw.dataset.ph = "speed";
+      cw.innerHTML = `<div class="card spd-ph"><div class="spd-ph-v">–</div><b>${T("ความเร็ว")}</b><span>${T("ไม่มี GPS · ความเร็วใช้ได้ในแอปบลูทูธ")}</span></div>`;
+      grid.appendChild(cw);
+    };
     CL.forEach(([k, w], i) => {
-      const add = HIDSPD.reduce((a, h) => a + (h[0] === i ? h[1] : 0), 0);   // a set-aside speed card stood here: take its width
-      if (add && !ed && csizes(k).includes(Math.min(6, w + add))) w = Math.min(6, w + add);
+      HIDSPD.forEach(h => { if (h[0] === i) spdPh(h[1]); });
       const b = cbase(k), cw = document.createElement("div"); cw.className = "cw s" + w + (ed && SEL === k ? " sel" : ""); cw.dataset.k = k;
       const el = cardEl(k, tmp);
       if (el) { cw.appendChild(el); grid.appendChild(cw); }
@@ -3098,6 +3106,8 @@ window.MAP_STORE = {
         cw.appendChild(pk);
       }
     });
+    HIDSPD.forEach(h => { if (h[0] >= CL.length) spdPh(h[1]); });   // it was the last card
+
     const tool = $("rtool"); tool.hidden = !ed;
     if (ed) {
       const i = CL.findIndex(c => c[0] === SEL), c = CL[i], no = i < 0;
@@ -3670,20 +3680,31 @@ function buildLean() {} function paintMotion() {}
     if (typeof BOARD !== "undefined" && BOARD) { const L = window.LIVE; return !(L && L.on) ? 0 : (L.fix > 0 ? 2 : 1); }
     return 2;             // the claude.ai demo has no GPS feed; show it ready to showcase the full build
   }
+  // why there is no GPS, for the dial badge and the timer tab (Lite: the Wi-Fi page never has one; the app uses the
+  // phone's GPS, window.TGGPS from app_ble.js: state off | wait | ok | denied | none, err = the browser's reason)
+  function gpsWhy(en, race) {
+    const need = race ? (en ? "timing needs speed from the phone's GPS" : "จับเวลาต้องใช้ความเร็วจาก GPS ของมือถือ") : (en ? "no speed" : "ยังไม่มีความเร็ว");
+    if (window.TG_NOGPS) return en ? `No GPS on the Wi-Fi page — ${need}: open the Bluetooth app` : `หน้า Wi-Fi ไม่มี GPS — ${need} เปิดในแอปบลูทูธ`;
+    const G = window.TGGPS || {};
+    return (en ? "No GPS — " : "ไม่มี GPS — ") + need + " · " + (G.err || (en ? "turn the phone's Location on and allow this app to use it" : "เปิด Location ของมือถือ และอนุญาตให้แอปใช้ตำแหน่ง"));
+  }
   function updateGps() {
     const g = gpsLevel(), cls = g === 2 ? "ok" : g === 1 ? "warn" : "crit", en = lang === "en";
     const gl = $("gps-led");
     if (gl) {
       gl.className = "led " + cls;
-      $("gps-txt").textContent = "";              // compact: icon + LED only; the full status is in the title and the timer tab
+      const nog = window.TG_GPS && g === 0;     // Lite (app or Wi-Fi page) with no GPS now: say so on the dial
+      $("gps-txt").textContent = nog ? (en ? "No GPS" : "ไม่มี GPS") : "";   // otherwise compact: icon + LED only; the full status is in the title and the timer tab
       $("gps-badge").classList.toggle("off", g === 0);
-      $("gps-badge").title = g === 2 ? (en ? "GPS ready" : "GPS พร้อม") : g === 1 ? (en ? "Acquiring satellites" : "กำลังหาดาวเทียม") : (en ? "No phone GPS" : "ยังไม่มี GPS มือถือ");
+      $("gps-badge").title = nog ? gpsWhy(en) :
+        g === 2 ? (en ? "GPS ready" : "GPS พร้อม") : g === 1 ? (en ? "Acquiring satellites" : "กำลังหาดาวเทียม") : (en ? "No phone GPS" : "ยังไม่มี GPS มือถือ");
     }
     const rg = $("race-gps");
     if (rg) {
       rg.hidden = g === 2;
       rg.className = "gps-note " + cls;
       rg.textContent = g === 1 ? (en ? "Acquiring satellites… timing not ready yet" : "กำลังหาดาวเทียม… ยังจับเวลาไม่ได้")
+        : window.TG_GPS ? gpsWhy(en, true)
         : (en ? "No GPS from the phone yet — Settings → Bluetooth · phone GPS → Turn on GPS" : "ยังไม่มี GPS จากมือถือ — ไปที่ตั้งค่า → บลูทูธ · GPS มือถือ → เปิด GPS");
       const arm = $("r-arm"); if (arm && g !== 2) arm.disabled = true;
     }

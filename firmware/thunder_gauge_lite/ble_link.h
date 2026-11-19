@@ -212,6 +212,7 @@ void blSendTick() {
   if (blAckNew) {
     blAckNew = false;
     uint16_t a = blAckSeq;
+    if (blAckId == blOutId && a == 0xFFFF) { blOutBusy = false; blOut = ""; return; }   // the phone no longer wants this reply
     if (blAckId == blOutId && a >= blOutAcked && a <= blOutTotal) {
       if (a > blOutAcked) blOutTries = 0;
       blOutAcked = a; blOutAt = now;
@@ -260,7 +261,9 @@ void bleLoop() {
     logLine("บลูทูธ: เครื่องที่ต่อค้างไม่ได้เปิดแอป ตัดทิ้งให้เครื่องอื่นต่อได้");
     blSrv->disconnect(blConnId);
   }
-  if (blInReady && !blOutBusy) blTakeRequest();
+  // A new request while an older reply is still unfinished: the phone has given up on the old one (it waits for the
+  // newest), so drop that reply and answer the new request at once. Otherwise a slow link falls further and further behind.
+  if (blInReady && (!blOutBusy || blInId != blOutId)) { blOutBusy = false; blOut = ""; blTakeRequest(); }
   blSendTick();
   blLiveTick();
 }

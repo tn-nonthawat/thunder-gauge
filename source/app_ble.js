@@ -21,6 +21,9 @@
   var L = function (th, e) { return en() ? e : th; };
 
   var IOS = /iP(hone|ad|od)/.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+  // iPhone browsers (Bluefy) barely pass notifications to the page, so there the app reads the replies and the live data
+  // itself (pull mode, told to the board in the hello); Android gets them notified.
+  var PULL = IOS;
   var BLUEFY = "https://apps.apple.com/app/id1492822055";   // Bluefy – Web BLE Browser (free): Web Bluetooth on iPhone
   var T = window.TGBLE = { state: "off", name: "", mock: MOCK, supported: !!(navigator.bluetooth || MOCK), live: null, liveAt: 0, err: "" };
   var subs = [];
@@ -69,6 +72,26 @@
       cur.nakAt = Date.now(); ack(cur.id, cur.next);
     }
   }
+  // pull mode: read RES until it holds the piece we wait for; ack it (the board then puts the next piece there)
+  function pullRead(id) {
+    if (!cur || cur.id !== id || T.state !== "on" || !ch.res) return;
+    gatt(function () { return ch.res.readValue(); }).then(function (dv) {
+      if (!cur || cur.id !== id) return;
+      if (dv.byteLength >= 4 && dv.getUint8(0) === id && dv.getUint16(2, true) === cur.next) {
+        T.rx.res++;
+        var last = dv.getUint8(1);
+        cur.parts.push(new Uint8Array(dv.buffer.slice(dv.byteOffset + 4, dv.byteOffset + dv.byteLength)));
+        cur.next++;
+        ack(id, cur.next);
+        if (last) { finish(); return; }
+        pullRead(id);
+      } else setTimeout(function () { pullRead(id); }, 40);   // not ready yet (or still the previous piece)
+    }).catch(function () { setTimeout(function () { pullRead(id); }, 150); });
+  }
+  setInterval(function () {                     // pull mode: live data once a second
+    if (!PULL || T.state !== "on" || !ch.live || T.otaBusy) return;
+    gatt(function () { return ch.live.readValue(); }).then(function (v) { onLive({ target: { value: v } }); }).catch(function () {});
+  }, 1000);
   function ack(id, next) {
     if (!ch.req) return;
     gatt(function () { return wr(ch.req, u8([3, id, next & 255, next >> 8])); }).catch(function () {});
@@ -108,6 +131,7 @@
         return gatt(function () { return wr(ch.req, pkt); });
       });
     })(s);
+    if (PULL) chain.then(function () { pullRead(id); });
     chain.catch(function () { if (cur && cur.id === id) { var c = cur; cur = null; clearTimeout(c.timer); c.reject(new TypeError("Bluetooth write failed")); pump(); } });
   }
   function waitFor(url) {
@@ -162,7 +186,7 @@
     }).then(function (c) {
       ch = { live: c[0], req: c[1], res: c[2], ota: c[3] };
       // hello first: the board only answers paired phones, so this is where Android asks for the PIN
-      return gatt(function () { return wr(ch.req, u8([4, 0, 0, 0, IOS ? 10 : 1])); });   // byte 4: live data every n x 100 ms (iPhone browsers pass Bluetooth data slowly)
+      return gatt(function () { return wr(ch.req, u8([4, 0, 0, 0, IOS ? 10 : 1, PULL ? 1 : 0])); });   // byte 4: live every n x 100 ms; byte 5 bit 0: pull mode
     }).then(function () {
       ch.res.addEventListener("characteristicvaluechanged", onRes);
       ch.live.addEventListener("characteristicvaluechanged", onLive);

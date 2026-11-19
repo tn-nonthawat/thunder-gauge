@@ -39,6 +39,7 @@ BLEServer* blSrv = nullptr;
 BLECharacteristic *blLive = nullptr, *blReq = nullptr, *blRes = nullptr, *blOta = nullptr;
 volatile bool blConn = false;
 volatile bool blGreeted = false; volatile uint32_t blConnAt = 0; volatile uint8_t blEvt = 0;   // this link said hello; when it came; connect/disconnect seen (logged from loop())
+volatile bool blPull = false;      // pull mode (hello byte 5 bit 0): the phone reads RES / LIVE itself, nothing is notified
 volatile uint16_t blLiveMs = 100;   // shortest gap between live packets, asked by the phone in its hello (iPhone/Bluefy: 1000)
 volatile bool blHello = false;   // a phone wrote hello (with a PIN set: only a paired one can): the .ino turns Wi-Fi off
 volatile uint16_t blConnId = 0;
@@ -59,9 +60,11 @@ void blOtaStatus(const String& s) { if (blOta) blOta->setValue(s); }
 // Notify the connected phone directly. The library's notify() only sends to phones it saw subscribe, and after a
 // reconnect Chrome on Android may skip writing the subscription again (it thinks it is still on), so replies and
 // live data would never arrive. ble_gatts_notify_custom sends to the connection whatever the subscription state.
+// Pull mode, for iPhone browsers (Bluefy): notifications barely reach the page there, while reads always do. The phone
+// then reads RES for each reply piece (the value is the piece it acked last) and reads LIVE about once a second.
 static void blNotify(BLECharacteristic* c, const uint8_t* d, size_t n) {
   c->setValue(d, n);                             // also readable
-  if (!blConn) return;
+  if (!blConn || blPull) return;
   os_mbuf* om = ble_hs_mbuf_from_flat(d, n);
   if (om) ble_gatts_notify_custom(blConnId, c->getHandle(), om);   // a lost piece is sent again by the reply window
 }
@@ -91,7 +94,7 @@ class BlReqCb : public BLECharacteristicCallbacks {
     if (n < 4) return;
     uint8_t kind = p[0], id = p[1]; uint16_t seq = p[2] | (p[3] << 8);
     if (kind == 3) { blAckId = id; blAckSeq = seq; blAckNew = true; return; }
-    if (kind == 4) { blHello = true; blGreeted = true; blLiveMs = n >= 5 && p[4] ? p[4] * 100 : 100; return; }   // byte 4 = live interval x100 ms   // hello: the phone pairs here, before it subscribes
+    if (kind == 4) { blHello = true; blGreeted = true; blLiveMs = n >= 5 && p[4] ? p[4] * 100 : 100; blPull = n >= 6 && (p[5] & 1); return; }   // byte 4 = live interval x100 ms   // hello: the phone pairs here, before it subscribes
     if (kind != 1 && kind != 2) return;
     if (blInReady) return;                       // loop() has not taken the last one yet: the phone retries
     if (seq == 0) { blIn = ""; blInId = id; blInSeq = 0; }
@@ -176,6 +179,7 @@ static HTTPMethod blMethod(const String& m) {
   return HTTP_GET;
 }
 
+void blSendPiece(uint16_t seq);
 void blTakeRequest() {
   String r = blIn; uint8_t id = blInId;
   blIn = ""; blInReady = false;
@@ -196,6 +200,7 @@ void blTakeRequest() {
   blChunk = mtu > 30 ? min(240, mtu - 3 - 4) : 16;
   blOutId = id; blOutTotal = (blOut.length() + blChunk - 1) / blChunk; blOutSent = blOutAcked = 0; blOutTries = 0;
   blOutAt = millis(); blOutBusy = true; blAckNew = false;
+  if (blPull) blSendPiece(0);                    // pull mode: the first piece waits in RES for the phone to read
 }
 
 void blSendPiece(uint16_t seq) {
@@ -219,7 +224,12 @@ void blSendTick() {
       blOutAcked = a; blOutAt = now;
       if (a < blOutSent) blOutSent = a;        // the phone missed a piece: send again from there
       if (a >= blOutTotal) { blOutBusy = false; blOut = ""; return; }
+      if (blPull) blSendPiece(a);              // pull mode: put the next piece in RES for the phone's next read
     }
+  }
+  if (blPull) {                                  // pull mode: no windows, the phone reads at its own pace
+    if (now - blOutAt > 8000) { blOutBusy = false; blOut = ""; logLine("บลูทูธ: แอปไม่มาอ่านคำตอบ เลิกส่ง (ได้ " + String(blOutAcked) + "/" + String(blOutTotal) + " ชิ้น)"); }
+    return;
   }
   if (blOutSent > blOutAcked && now - blOutAt > 400) {   // no ack: send the window again
     if (++blOutTries > 20) { blOutBusy = false; blOut = ""; logLine("บลูทูธ: แอปไม่ตอบรับคำตอบ เลิกส่ง (ได้ " + String(blOutAcked) + "/" + String(blOutTotal) + " ชิ้น)"); return; }
@@ -233,7 +243,7 @@ void blLiveTick() {
   uint32_t now = millis();
   // Live data waits while a reply is being sent: a slow phone browser (iPhone/Bluefy) passes Bluetooth data to the
   // page one by one, so a stream of live packets would make every reply wait behind it.
-  if (blOutBusy) return;
+  if (blOutBusy && !blPull) return;
   if (now - lastSend < blLiveMs) return;
   if (liveAt == lastAt && awake == lastAwake && now - lastSend < max((uint16_t)500, (uint16_t)blLiveMs)) return;
   lastAt = liveAt; lastAwake = awake; lastSend = now;

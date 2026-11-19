@@ -1006,6 +1006,9 @@ window.MAP_STORE = {
   var L = function (th, e) { return en() ? e : th; };
 
   var IOS = /iP(hone|ad|od)/.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+  // iPhone browsers (Bluefy) barely pass notifications to the page, so there the app reads the replies and the live data
+  // itself (pull mode, told to the board in the hello); Android gets them notified.
+  var PULL = IOS;
   var BLUEFY = "https://apps.apple.com/app/id1492822055";   // Bluefy – Web BLE Browser (free): Web Bluetooth on iPhone
   var T = window.TGBLE = { state: "off", name: "", mock: MOCK, supported: !!(navigator.bluetooth || MOCK), live: null, liveAt: 0, err: "" };
   var subs = [];
@@ -1054,6 +1057,26 @@ window.MAP_STORE = {
       cur.nakAt = Date.now(); ack(cur.id, cur.next);
     }
   }
+  // pull mode: read RES until it holds the piece we wait for; ack it (the board then puts the next piece there)
+  function pullRead(id) {
+    if (!cur || cur.id !== id || T.state !== "on" || !ch.res) return;
+    gatt(function () { return ch.res.readValue(); }).then(function (dv) {
+      if (!cur || cur.id !== id) return;
+      if (dv.byteLength >= 4 && dv.getUint8(0) === id && dv.getUint16(2, true) === cur.next) {
+        T.rx.res++;
+        var last = dv.getUint8(1);
+        cur.parts.push(new Uint8Array(dv.buffer.slice(dv.byteOffset + 4, dv.byteOffset + dv.byteLength)));
+        cur.next++;
+        ack(id, cur.next);
+        if (last) { finish(); return; }
+        pullRead(id);
+      } else setTimeout(function () { pullRead(id); }, 40);   // not ready yet (or still the previous piece)
+    }).catch(function () { setTimeout(function () { pullRead(id); }, 150); });
+  }
+  setInterval(function () {                     // pull mode: live data once a second
+    if (!PULL || T.state !== "on" || !ch.live || T.otaBusy) return;
+    gatt(function () { return ch.live.readValue(); }).then(function (v) { onLive({ target: { value: v } }); }).catch(function () {});
+  }, 1000);
   function ack(id, next) {
     if (!ch.req) return;
     gatt(function () { return wr(ch.req, u8([3, id, next & 255, next >> 8])); }).catch(function () {});
@@ -1093,6 +1116,7 @@ window.MAP_STORE = {
         return gatt(function () { return wr(ch.req, pkt); });
       });
     })(s);
+    if (PULL) chain.then(function () { pullRead(id); });
     chain.catch(function () { if (cur && cur.id === id) { var c = cur; cur = null; clearTimeout(c.timer); c.reject(new TypeError("Bluetooth write failed")); pump(); } });
   }
   function waitFor(url) {
@@ -1147,7 +1171,7 @@ window.MAP_STORE = {
     }).then(function (c) {
       ch = { live: c[0], req: c[1], res: c[2], ota: c[3] };
       // hello first: the board only answers paired phones, so this is where Android asks for the PIN
-      return gatt(function () { return wr(ch.req, u8([4, 0, 0, 0, IOS ? 10 : 1])); });   // byte 4: live data every n x 100 ms (iPhone browsers pass Bluetooth data slowly)
+      return gatt(function () { return wr(ch.req, u8([4, 0, 0, 0, IOS ? 10 : 1, PULL ? 1 : 0])); });   // byte 4: live every n x 100 ms; byte 5 bit 0: pull mode
     }).then(function () {
       ch.res.addEventListener("characteristicvaluechanged", onRes);
       ch.live.addEventListener("characteristicvaluechanged", onLive);
@@ -1528,7 +1552,7 @@ window.MAP_STORE = {
         '<button class="btn" type="button" id="bt-apoff">' + L("ปิด Wi-Fi ของบอร์ด", "Turn board Wi-Fi off") + '</button>' +
         '<button class="btn" type="button" id="bt-off">' + L("ตัดการเชื่อมต่อ", "Disconnect") + '</button></div>' +
         '<p class="note">' + L("ความเร็วมาจาก GPS ของมือถือ (ECU ของ Wave 110i ไม่ส่งความเร็ว) ได้ราว 1 ครั้งต่อวินาที วางมือถือให้เห็นท้องฟ้า · Wi-Fi ของบอร์ดใช้ตอนอยากเปิดหน้าเกจจากมือถือเครื่องอื่นหรือ iPhone (http://192.168.4.1) บอร์ดปิด Wi-Fi เองเมื่อแอปนี้ต่อบลูทูธ และปิดอีกครั้งเมื่อไม่มีใครต่อ 10 นาที",
-          "Speed comes from the phone's GPS (the Wave 110i ECU sends none), about once a second; keep the phone where it sees the sky · The board's Wi-Fi is for opening the gauge on another phone or an iPhone (http://192.168.4.1); the board turns it off once this app connects over Bluetooth, and again after 10 minutes with nobody on it") + '</p><p class="note" style="opacity:.6">' + L("รุ่นแอป ", "App build ") + "2026-11-19 22:36" + '</p></div>');
+          "Speed comes from the phone's GPS (the Wave 110i ECU sends none), about once a second; keep the phone where it sees the sky · The board's Wi-Fi is for opening the gauge on another phone or an iPhone (http://192.168.4.1); the board turns it off once this app connects over Bluetooth, and again after 10 minutes with nobody on it") + '</p><p class="note" style="opacity:.6">' + L("รุ่นแอป ", "App build ") + "2026-11-19 22:41" + '</p></div>');
       set.insertBefore(card, set.querySelector(".card"));
       card.querySelector("#bt-go").addEventListener("click", T.connect);
       card.querySelector("#bt-off").addEventListener("click", T.disconnect);

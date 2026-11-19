@@ -75,7 +75,7 @@ ui_sync = '''<script>
   try {                                   // load the board's copy before the page reads its settings
     var x = new XMLHttpRequest(); x.open("GET", "/ui", false); x.send();
     if (x.status === 200) { var bv = +(x.getResponseHeader("X-UI-Ver") || 0), d = JSON.parse(x.responseText);
-      if (d && bv) { if (bv !== ver) { apply(d); setVer(bv); } else last = JSON.stringify(snapOf(d)); }   // same version: remember it, so rewriting the same values sends nothing
+      if (d && bv) { if (JSON.stringify(snapOf(d)) !== JSON.stringify(snapOf(snap()))) apply(d); else last = JSON.stringify(snapOf(d)); setVer(bv); }   // the board's copy wins when its content differs (not only its version: a BOOT reset restarts the count); same content: remember it, so rewriting the same values sends nothing
       else { setVer(0); setTimeout(push, 1500); } }   // nothing on the board yet: this phone's screen becomes the shared one
   } catch (e) {}
   setInterval(function () {               // another phone changed the screen: take it over

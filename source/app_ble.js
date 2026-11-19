@@ -358,8 +358,11 @@
         return r.json().then(function (d) {
           if (r.status !== 200) return;
           if (d && bv) {
-            if (bv !== ver) { apply(d); setVer(bv); synced = true; try { sessionStorage.setItem("tg-ui-reload", "1"); } catch (e) {} location.reload(); return; }
-            last = JSON.stringify(snapOf(d));
+            // the board's copy wins when it differs from this phone's: compare the content too, not only the version
+            // (a BOOT reset starts the board's count at 0 again, so a phone's old number can match by chance)
+            var theirs = JSON.stringify(snapOf(d)), mine = JSON.stringify(snapOf(snap()));
+            if (theirs !== mine) { apply(d); setVer(bv); synced = true; try { sessionStorage.setItem("tg-ui-reload", "1"); } catch (e) {} location.reload(); return; }
+            setVer(bv); last = theirs;
           } else if (first) { setVer(0); synced = true; setTimeout(push, 1500); return; }   // nothing on the board yet: this phone's screen becomes the shared one
           synced = true;
         });

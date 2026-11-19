@@ -147,6 +147,9 @@ void handleLink() {                     // GET /api/link[?ap=1|0]: Wi-Fi state (
 
 void setup() {
   Serial.begin(115200);
+  // USB plugged into a PC with no serial monitor open: the log fills the USB buffer and each print would wait up to
+  // ~2 s for room, stalling loop() (Bluetooth replies time out). Drop log text instead of waiting.
+  Serial.setTxTimeoutMs(0);
   delay(1000);
   fsOk = LittleFS.begin(true);          // formats the data partition on first boot
 

@@ -178,7 +178,11 @@
     return navigator.bluetooth.requestDevice({ filters: [{ services: [SVC] }] }).then(function (d) { useDevice(d); return open(); })
       .catch(function (e) {
         var m = String(e && e.message || e);
-        if (/cancel/i.test(m) || (e && e.name === "NotFoundError")) { if (T.state !== "on") setState("off", ""); return; }
+        if (/cancel/i.test(m) || (e && e.name === "NotFoundError")) {   // closed the list, often because the gauge was not in it
+          if (T.state !== "on") setState("off", L("ไม่เจอเกจในรายการ? บิดกุญแจเปิดอยู่ไหม · ต่อได้ทีละเครื่อง: ถ้ามือถืออีกเครื่องเปิดแอปอยู่ ให้กดตัดการเชื่อมต่อหรือปิดแอปบนเครื่องนั้นก่อน",
+            "Gauge not in the list? Is the key on? · One phone at a time: if another phone has the app open, disconnect or close it there first"));
+          return;
+        }
         if (/auth|pair|security|insufficient/i.test(m)) m = L("จับคู่ไม่สำเร็จ ลองใหม่แล้วใส่รหัส PIN 6 หลักที่ตั้งไว้ในตัวช่วยตั้งค่า", "Pairing failed. Try again and enter the 6-digit PIN set in the setup wizard.");
         setState(T.state === "on" ? "on" : "off", m);
       });
@@ -209,7 +213,24 @@
     if (!navigator.wakeLock || document.hidden || lock) return;
     navigator.wakeLock.request("screen").then(function (l) { lock = l; l.addEventListener("release", function () { lock = null; }); }).catch(function () {});
   }
-  document.addEventListener("visibilitychange", function () { if (!document.hidden && T.state === "on") wake(); });
+  // The board takes one phone at a time. An app left open in the background (screen off, another app in front) lets go
+  // of the link after 30 s so another phone can connect, and takes it again when it is on screen. While riding the
+  // screen stays on (wake lock), so the link is kept. Not during a firmware upload.
+  var hideT = 0, parked = false;
+  document.addEventListener("visibilitychange", function () {
+    clearTimeout(hideT);
+    if (document.hidden) {
+      if (T.state === "on" && !MOCK) hideT = setTimeout(function () {
+        if (!document.hidden || T.otaBusy || T.state !== "on") return;
+        parked = true; wantOn = false; clearTimeout(retryT);
+        try { dev.gatt.disconnect(); } catch (e) {}
+        setState("off", L("พักการเชื่อมต่อไว้ตอนแอปไม่ได้เปิดอยู่ (ให้มือถือเครื่องอื่นต่อได้)", "Link paused while the app was in the background (so another phone can connect)"));
+      }, 30000);
+      return;
+    }
+    if (parked && dev) { parked = false; wantOn = true; setState("connecting", ""); open().catch(function () { lost(); }); }
+    else if (T.state === "on") wake();
+  });
 
   // ---------------------------------------------------------------- firmware update over Bluetooth
   T.ota = function (buf, prog) {

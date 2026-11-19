@@ -62,6 +62,16 @@ class BlSrvCb : public BLEServerCallbacks {
   }
 };
 
+// pairing result, logged from loop(): status 0 = paired; encrypted / authenticated (PIN) / bonded flags
+volatile int blAuthStatus = 0; volatile uint8_t blAuthFlags = 0; volatile bool blAuthEvt = false;
+class BlSecCb : public BLESecurityCallbacks {
+  void onAuthenticationComplete(ble_gap_conn_desc* d, int status) override {
+    blAuthStatus = status;
+    blAuthFlags = (d && d->sec_state.encrypted ? 1 : 0) | (d && d->sec_state.authenticated ? 2 : 0) | (d && d->sec_state.bonded ? 4 : 0);
+    blAuthEvt = true;
+  }
+};
+
 class BlReqCb : public BLECharacteristicCallbacks {
   void onWrite(BLECharacteristic* c) override {
     String v = c->getValue();
@@ -124,6 +134,7 @@ void bleBegin(const String& name, const String& pin) {
     sec->setPassKey(true, (uint32_t)pin.toInt());  // static PIN: the board has no screen, the phone types it in
     sec->setCapability(ESP_IO_CAP_OUT);
     sec->setAuthenticationMode(true, true, true);  // bond, MITM (PIN prompt), LE secure connections
+    BLEDevice::setSecurityCallbacks(new BlSecCb());
   }
   blSrv = BLEDevice::createServer();
   blSrv->setCallbacks(new BlSrvCb());
@@ -186,7 +197,7 @@ void blSendPiece(uint16_t seq) {
 
 void blSendTick() {
   if (!blOutBusy) return;
-  if (!blConn) { blOutBusy = false; blOut = ""; return; }
+  if (!blConn) { blOutBusy = false; blOut = ""; logLine("บลูทูธ: หลุดระหว่างส่งคำตอบ"); return; }
   uint32_t now = millis();
   if (blAckNew) {
     blAckNew = false;
@@ -199,7 +210,7 @@ void blSendTick() {
     }
   }
   if (blOutSent > blOutAcked && now - blOutAt > 400) {   // no ack: send the window again
-    if (++blOutTries > 20) { blOutBusy = false; blOut = ""; return; }
+    if (++blOutTries > 20) { blOutBusy = false; blOut = ""; logLine("บลูทูธ: แอปไม่ตอบรับคำตอบ เลิกส่ง (ได้ " + String(blOutAcked) + "/" + String(blOutTotal) + " ชิ้น)"); return; }
     blOutSent = blOutAcked;
   }
   while (blOutSent < blOutTotal && blOutSent < blOutAcked + 8) { blSendPiece(blOutSent++); blOutAt = now; delay(2); }
@@ -227,6 +238,11 @@ void bleLoop() {
     uint8_t e = blEvt; blEvt = 0;
     if (e & 1) logLine("บลูทูธ: มีมือถือต่อเข้ามา");
     if ((e & 2) && !blConn) logLine("บลูทูธ: มือถือหลุด กลับไปรอให้ต่อ");
+  }
+  if (blAuthEvt) {
+    blAuthEvt = false; uint8_t f = blAuthFlags;
+    logLine(String("บลูทูธ: จับคู่") + (blAuthStatus == 0 ? "ผ่าน" : "ไม่ผ่าน (รหัส " + String(blAuthStatus) + ")") +
+            " · เข้ารหัส " + (f & 1 ? "ใช่" : "ไม่") + " · ใช้ PIN " + (f & 2 ? "ใช่" : "ไม่") + " · จำเครื่อง " + (f & 4 ? "ใช่" : "ไม่"));
   }
   // A link that never says hello is not the app (e.g. the phone's own Bluetooth holding an old connection). Only one
   // phone can be connected, so it would lock the app out: drop it after 15 s and advertise again.

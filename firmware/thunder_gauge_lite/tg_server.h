@@ -16,6 +16,7 @@ public:
   // Bluetooth firmware updates have their own characteristic in ble_link.h.
   void dispatch(HTTPMethod method, const String& uri, const String& query, const String& body, bool form, String& out) {
     out = "";
+    _clearResponseHeaders();                   // the http loop clears these per request; without it headers pile up reply after reply
     _currentMethod = method;
     _currentUri = uri;
     _currentVersion = 0;                       // HTTP/1.0 style: no chunked encoding in the caught reply
@@ -35,6 +36,7 @@ public:
     _handleRequest();
     cap = nullptr;
     _contentLength = CONTENT_LENGTH_NOT_SET;
+    _clearResponseHeaders();
   }
 
   // streamFile() writes straight to the socket in the base class; while catching a reply, copy the file instead.

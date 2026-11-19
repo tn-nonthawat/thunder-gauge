@@ -1163,7 +1163,11 @@ window.MAP_STORE = {
     return navigator.bluetooth.requestDevice({ filters: [{ services: [SVC] }] }).then(function (d) { useDevice(d); return open(); })
       .catch(function (e) {
         var m = String(e && e.message || e);
-        if (/cancel/i.test(m) || (e && e.name === "NotFoundError")) { if (T.state !== "on") setState("off", ""); return; }
+        if (/cancel/i.test(m) || (e && e.name === "NotFoundError")) {   // closed the list, often because the gauge was not in it
+          if (T.state !== "on") setState("off", L("ไม่เจอเกจในรายการ? บิดกุญแจเปิดอยู่ไหม · ต่อได้ทีละเครื่อง: ถ้ามือถืออีกเครื่องเปิดแอปอยู่ ให้กดตัดการเชื่อมต่อหรือปิดแอปบนเครื่องนั้นก่อน",
+            "Gauge not in the list? Is the key on? · One phone at a time: if another phone has the app open, disconnect or close it there first"));
+          return;
+        }
         if (/auth|pair|security|insufficient/i.test(m)) m = L("จับคู่ไม่สำเร็จ ลองใหม่แล้วใส่รหัส PIN 6 หลักที่ตั้งไว้ในตัวช่วยตั้งค่า", "Pairing failed. Try again and enter the 6-digit PIN set in the setup wizard.");
         setState(T.state === "on" ? "on" : "off", m);
       });
@@ -1194,7 +1198,24 @@ window.MAP_STORE = {
     if (!navigator.wakeLock || document.hidden || lock) return;
     navigator.wakeLock.request("screen").then(function (l) { lock = l; l.addEventListener("release", function () { lock = null; }); }).catch(function () {});
   }
-  document.addEventListener("visibilitychange", function () { if (!document.hidden && T.state === "on") wake(); });
+  // The board takes one phone at a time. An app left open in the background (screen off, another app in front) lets go
+  // of the link after 30 s so another phone can connect, and takes it again when it is on screen. While riding the
+  // screen stays on (wake lock), so the link is kept. Not during a firmware upload.
+  var hideT = 0, parked = false;
+  document.addEventListener("visibilitychange", function () {
+    clearTimeout(hideT);
+    if (document.hidden) {
+      if (T.state === "on" && !MOCK) hideT = setTimeout(function () {
+        if (!document.hidden || T.otaBusy || T.state !== "on") return;
+        parked = true; wantOn = false; clearTimeout(retryT);
+        try { dev.gatt.disconnect(); } catch (e) {}
+        setState("off", L("พักการเชื่อมต่อไว้ตอนแอปไม่ได้เปิดอยู่ (ให้มือถือเครื่องอื่นต่อได้)", "Link paused while the app was in the background (so another phone can connect)"));
+      }, 30000);
+      return;
+    }
+    if (parked && dev) { parked = false; wantOn = true; setState("connecting", ""); open().catch(function () { lost(); }); }
+    else if (T.state === "on") wake();
+  });
 
   // ---------------------------------------------------------------- firmware update over Bluetooth
   T.ota = function (buf, prog) {
@@ -1469,7 +1490,7 @@ window.MAP_STORE = {
         '<button class="btn" type="button" id="bt-apoff">' + L("ปิด Wi-Fi ของบอร์ด", "Turn board Wi-Fi off") + '</button>' +
         '<button class="btn" type="button" id="bt-off">' + L("ตัดการเชื่อมต่อ", "Disconnect") + '</button></div>' +
         '<p class="note">' + L("ความเร็วมาจาก GPS ของมือถือ (ECU ของ Wave 110i ไม่ส่งความเร็ว) ได้ราว 1 ครั้งต่อวินาที วางมือถือให้เห็นท้องฟ้า · Wi-Fi ของบอร์ดใช้ตอนอยากเปิดหน้าเกจจากมือถือเครื่องอื่นหรือ iPhone (http://192.168.4.1) บอร์ดปิด Wi-Fi เองเมื่อแอปนี้ต่อบลูทูธ และปิดอีกครั้งเมื่อไม่มีใครต่อ 10 นาที",
-          "Speed comes from the phone's GPS (the Wave 110i ECU sends none), about once a second; keep the phone where it sees the sky · The board's Wi-Fi is for opening the gauge on another phone or an iPhone (http://192.168.4.1); the board turns it off once this app connects over Bluetooth, and again after 10 minutes with nobody on it") + '</p><p class="note" style="opacity:.6">' + L("รุ่นแอป ", "App build ") + "2026-11-19 12:34" + '</p></div>');
+          "Speed comes from the phone's GPS (the Wave 110i ECU sends none), about once a second; keep the phone where it sees the sky · The board's Wi-Fi is for opening the gauge on another phone or an iPhone (http://192.168.4.1); the board turns it off once this app connects over Bluetooth, and again after 10 minutes with nobody on it") + '</p><p class="note" style="opacity:.6">' + L("รุ่นแอป ", "App build ") + "2026-11-19 13:33" + '</p></div>');
       set.insertBefore(card, set.querySelector(".card"));
       card.querySelector("#bt-go").addEventListener("click", T.connect);
       card.querySelector("#bt-off").addEventListener("click", T.disconnect);

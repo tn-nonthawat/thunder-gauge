@@ -888,9 +888,9 @@ html.nospd .tabs { grid-template-columns: repeat(4, 1fr); }
       <h2>ทดสอบ K-Line <span class="chip dim">อ่านอย่างเดียว</span></h2>
       <p class="note" style="color:var(--warn)">การ์ดนี้ขึ้นเพราะบอร์ดปลุก ECU ไม่ติด ถ้า ECU ตอบปกติ การ์ดจะไม่แสดง</p>
       <p class="note">บิดกุญแจ ยังไม่ต้องสตาร์ท แล้วกด "ปลุก ECU" · ส่งแค่คำสั่งปลุกและขออ่านข้อมูล ไม่เขียนอะไรลงกล่อง</p>
-      <div class="kv">
-        <div><span>สาย K-Line</span><b id="kl-line">–</b></div>
-        <div><span>ECU</span><b id="kl-st">ยังไม่ได้ปลุก</b></div>
+      <div class="kv" style="grid-template-columns:1fr 1fr">
+        <div><span>สาย K-Line</span><b id="kl-line" style="white-space:normal">–</b></div>
+        <div><span>ECU</span><b id="kl-st" style="white-space:normal">ยังไม่ได้ปลุก</b></div>
       </div>
       <p class="note" id="kl-hint"></p>
       <div class="acts">
@@ -1555,8 +1555,9 @@ window.MAP_STORE = {
         '<button class="btn" type="button" id="bt-apoff">' + L("ปิด Wi-Fi ของบอร์ด", "Turn board Wi-Fi off") + '</button>' +
         '<button class="btn" type="button" id="bt-off">' + L("ตัดการเชื่อมต่อ", "Disconnect") + '</button></div>' +
         '<p class="note">' + L("ความเร็วมาจาก GPS ของมือถือ (ECU ของ Wave 110i ไม่ส่งความเร็ว) ได้ราว 1 ครั้งต่อวินาที วางมือถือให้เห็นท้องฟ้า · Wi-Fi ของบอร์ดใช้ตอนอยากเปิดหน้าเกจจากมือถือเครื่องอื่นหรือ iPhone (http://192.168.4.1) บอร์ดปิด Wi-Fi เองเมื่อแอปนี้ต่อบลูทูธ และปิดอีกครั้งเมื่อไม่มีใครต่อ 10 นาที",
-          "Speed comes from the phone's GPS (the Wave 110i ECU sends none), about once a second; keep the phone where it sees the sky · The board's Wi-Fi is for opening the gauge on another phone or an iPhone (http://192.168.4.1); the board turns it off once this app connects over Bluetooth, and again after 10 minutes with nobody on it") + '</p><p class="note" style="opacity:.6">' + L("รุ่นแอป ", "App build ") + "2026-11-20 00:21" + '</p></div>');
-      set.insertBefore(card, set.querySelector(".card"));
+          "Speed comes from the phone's GPS (the Wave 110i ECU sends none), about once a second; keep the phone where it sees the sky · The board's Wi-Fi is for opening the gauge on another phone or an iPhone (http://192.168.4.1); the board turns it off once this app connects over Bluetooth, and again after 10 minutes with nobody on it") + '</p><p class="note" style="opacity:.6">' + L("รุ่นแอป ", "App build ") + "2026-11-20 00:47" + '</p></div>');
+      var first = set.querySelector(".card");   // the settings page may already be in groups: the card goes next to the first card, wherever it is
+      if (first) first.parentNode.insertBefore(card, first); else set.appendChild(card);
       card.querySelector("#bt-go").addEventListener("click", T.connect);
       card.querySelector("#bt-off").addEventListener("click", T.disconnect);
       card.querySelector("#bt-gpsgo").addEventListener("click", startGps);
@@ -3050,9 +3051,20 @@ window.MAP_STORE = {
     .map(c => [c[0], csizes(c[0]).includes(c[1]) ? c[1] : csizes(c[0])[0]]);
   let PREV = null;                         // the user's own layout before trying presets, for undo (until Done)
   let CL = cardsDef(), SEL = null;
+  // The ride layout is shared by every phone (board /ui). The Wi-Fi Lite page has no speed source, so a speed card
+  // made in the Bluetooth app is set aside here (HIDSPD: [position in CL, width]): its width goes to the card that
+  // takes its place, and it is put back when the layout is saved, so the app keeps it.
+  let HIDSPD = [];
   try { const j = JSON.parse(localStorage.getItem("tg-cards") || "null");
-    if (Array.isArray(j) && migrateSide(j)) CL = cleanCards(j); } catch (e) {}
-  const saveCards = () => { try { localStorage.setItem("tg-cards", JSON.stringify(CL)); } catch (e) {} };
+    if (Array.isArray(j) && migrateSide(j)) {
+      if (NOSPD) { let n = 0; j.forEach(c => { if (Array.isArray(c) && c[0] === "speed") HIDSPD.push([n, +c[1] || 3]); else n++; }); }
+      CL = cleanCards(j);
+    } } catch (e) {}
+  const saveCards = () => {
+    let out = CL;
+    if (HIDSPD.length) { out = CL.slice(); HIDSPD.forEach(([i, w]) => out.splice(Math.min(i, out.length), 0, ["speed", w])); }
+    try { localStorage.setItem("tg-cards", JSON.stringify(out)); } catch (e) {}
+  };
   const rideTiles = () => CL.filter(c => c[0].startsWith("v:")).map(c => c[0].slice(2));
   function buildCards() {
     const sec = $("v-ride"), grid = $("ride-cards"), park = $("card-park"), ed = ED.r;
@@ -3062,7 +3074,9 @@ window.MAP_STORE = {
     sec.classList.toggle("editing", ed);
     const tmp = document.createElement("div");
     for (const m of [DIAL_EL, SIDE_EL, MIR_EL, ENG_EL]) for (const k in m) if (!CL.some(c => c[0] === k)) delete m[k];
-    CL.forEach(([k, w]) => {
+    CL.forEach(([k, w], i) => {
+      const add = HIDSPD.reduce((a, h) => a + (h[0] === i ? h[1] : 0), 0);   // a set-aside speed card stood here: take its width
+      if (add && !ed && csizes(k).includes(Math.min(6, w + add))) w = Math.min(6, w + add);
       const b = cbase(k), cw = document.createElement("div"); cw.className = "cw s" + w + (ed && SEL === k ? " sel" : ""); cw.dataset.k = k;
       const el = cardEl(k, tmp);
       if (el) { cw.appendChild(el); grid.appendChild(cw); }
@@ -3967,6 +3981,83 @@ function buildLean() {} function paintMotion() {}
   renderCodes(); paintHist(); raceButtons(); if (lang === "en") { recLabel(); clearBtn(); } go();
   let frame = 0;
   setInterval(() => { step(); frame++; if (view === "race" || view === "ride" || frame % 3 === 0) render(); }, DT * 1000);
+})();
+</script>
+<script>
+// Settings page in collapsible groups (screen / connection / bike + ECU / board). Cards are sorted into groups at
+// load and whenever a card is added later (the board build and the Bluetooth app add their own cards). Which groups
+// are open is kept per phone (tg-setgrp, not shared with other phones). A card that needs the rider (the K-Line test
+// card, shown when the ECU does not wake) opens its group by itself, and so does a jump to a card (scrollIntoView).
+(function setGroups() {
+  const set = document.getElementById("v-set");
+  if (!set) return;
+  const G = [["view", "หน้าจอ", "Screen"], ["conn", "การเชื่อมต่อ", "Connection"], ["ecu", "รถและ ECU", "Bike and ECU"], ["board", "บอร์ด", "Board"]];
+  // [group, selector]: the card itself (id) first, then a card that holds the element; the list order is the order in the group
+  const R = [["view", "#lang"], ["view", "#app-name"], ["view", "#awake"], ["view", "#style-card"], ["view", "#look-card"],
+    ["conn", "#bt-card"], ["conn", "#app-card"], ["conn", "#lat"], ["conn", 'a[href="/setup"]'],
+    ["ecu", "#kl-card"], ["ecu", "#scan-card"], ["ecu", "#hex-req"],
+    ["board", "#setup-card"], ["board", "#ota-card"]];
+  const en = () => document.documentElement.lang === "en";
+  let open = {}; try { open = JSON.parse(localStorage.getItem("tg-setgrp") || "{}") || {}; } catch (e) {}
+  const save = () => { try { localStorage.setItem("tg-setgrp", JSON.stringify(open)); } catch (e) {} };
+  const css = document.createElement("style");
+  css.textContent = ".sg{display:flex;flex-direction:column;gap:12px}" +
+    ".sg-h{display:flex;align-items:center;gap:10px;width:100%;padding:14px;background:var(--panel);border:1px solid var(--line);border-radius:var(--r);color:inherit;font:700 15px/1.2 var(--font-display);letter-spacing:.02em;text-align:left;cursor:pointer}" +
+    ".sg-h span{flex:1}.sg-h small{font:500 12px/1 inherit;color:var(--dim)}" +
+    ".sg-h svg{width:18px;height:18px;flex:none;transition:transform .2s}.sg.on .sg-h svg{transform:rotate(180deg)}" +
+    ".sg-b{display:flex;flex-direction:column;gap:12px}.sg:not(.on) .sg-b{display:none}";
+  document.head.appendChild(css);
+  const box = {};
+  G.forEach(([g]) => {
+    const w = document.createElement("div"); w.className = "sg" + (open[g] ? " on" : ""); w.dataset.g = g;
+    w.innerHTML = '<button type="button" class="sg-h" aria-expanded="false"><span></span><small></small><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6 6-6" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg></button><div class="sg-b"></div>';
+    w.firstChild.onclick = () => { open[g] = !w.classList.contains("on"); w.classList.toggle("on", open[g]); save(); label(); };
+    set.appendChild(w); box[g] = w;
+  });
+  function rule(c) {
+    for (let i = 0; i < R.length; i++) if (c.matches(R[i][1])) return i;
+    for (let i = 0; i < R.length; i++) if (c.querySelector(R[i][1])) return i;
+    return R.length;                              // unknown card: last group
+  }
+  function label() {
+    G.forEach(([g, th, e]) => {
+      const w = box[g], b = w.firstChild, n = [...w.lastChild.children].filter(c => !c.hidden).length;
+      const t = en() ? e : th, x = String(w.classList.contains("on"));   // change only what differs: every change wakes the observer
+      if (w.hidden !== !n) w.hidden = !n;
+      if (b.children[0].textContent !== t) b.children[0].textContent = t;
+      if (b.children[1].textContent !== String(n)) b.children[1].textContent = n;
+      if (b.getAttribute("aria-expanded") !== x) b.setAttribute("aria-expanded", x);
+    });
+    if (mo) mo.takeRecords();                     // our own changes are not news
+  }
+  let mo = null;
+  let busy = false;
+  function place() {
+    if (busy) return; busy = true;
+    set.querySelectorAll(".card").forEach(c => {
+      if (c.parentNode !== set && !(c.parentNode.classList && c.parentNode.classList.contains("sg-b"))) return;   // a card inside a card: leave it
+      const i = rule(c), g = i < R.length ? R[i][0] : "board", body = box[g].lastChild;
+      if (c.dataset.sgr !== String(i)) c.dataset.sgr = i;
+      if (c.parentNode !== body) body.appendChild(c);
+    });
+    G.forEach(([g]) => {                          // keep the group's order, moving cards only when it is wrong
+      const b = box[g].lastChild, now = [...b.children], want = now.slice().sort((x, y) => x.dataset.sgr - y.dataset.sgr);
+      if (want.some((c, k) => c !== now[k])) want.forEach(c => b.appendChild(c));
+    });
+    const kl = document.getElementById("kl-card");
+    if (kl && !kl.hidden && !kl.dataset.sgOpened) { kl.dataset.sgOpened = 1; box.ecu.classList.add("on"); }   // the ECU did not wake: show the test card
+    label(); busy = false;
+  }
+  place();
+  mo = new MutationObserver(place);
+  mo.observe(set, { childList: true, subtree: true, attributes: true, attributeFilter: ["hidden"] });
+  new MutationObserver(label).observe(document.documentElement, { attributes: true, attributeFilter: ["lang"] });
+  const siv = Element.prototype.scrollIntoView;   // a jump to a card in a closed group opens the group first
+  Element.prototype.scrollIntoView = function () {
+    const w = this.closest && this.closest(".sg");
+    if (w && !w.classList.contains("on")) { w.classList.add("on"); label(); }
+    return siv.apply(this, arguments);
+  };
 })();
 </script>
 

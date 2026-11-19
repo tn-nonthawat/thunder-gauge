@@ -82,6 +82,7 @@ void handleUiGet() {
   server.sendHeader("Cache-Control", "no-store");
   server.sendHeader("X-UI-Ver", String(uiVer));
   if (server.hasArg("q")) { server.send(200, "text/plain", String(uiVer)); return; }
+  logLine("หน้าจอ: มือถือขอค่า (มีอยู่ v" + String(uiVer) + ")");
   if (!fsOk || !uiVer || !LittleFS.exists(UI_FILE)) { server.send(200, "application/json", "null"); return; }
   File f = LittleFS.open(UI_FILE, "r");
   server.streamFile(f, "application/json");
@@ -90,7 +91,7 @@ void handleUiGet() {
 
 void handleUiPost() {
   if (!fsOk) { server.send(503, "text/plain", "no fs"); return; }
-  if ((uint32_t)server.arg("v").toInt() != uiVer) { server.sendHeader("X-UI-Ver", String(uiVer)); server.send(409, "text/plain", String(uiVer)); return; }
+  if ((uint32_t)server.arg("v").toInt() != uiVer) { logLine("หน้าจอ: มือถือส่งค่าจาก v" + server.arg("v") + " แต่บอร์ดมี v" + String(uiVer) + " → ให้ลองใหม่"); server.sendHeader("X-UI-Ver", String(uiVer)); server.send(409, "text/plain", String(uiVer)); return; }
   const String& body = server.arg("plain");
   if (body.length() < 2 || body.length() > 65536 || body[0] != '{') { server.send(400, "text/plain", "bad ui"); return; }
   File f = LittleFS.open(UI_TMP, "w");
@@ -101,6 +102,7 @@ void handleUiPost() {
   LittleFS.remove(UI_FILE);
   LittleFS.rename(UI_TMP, UI_FILE);
   uiVer++;
+  logLine("หน้าจอ: บันทึกค่าใหม่ v" + String(uiVer) + " (" + String(body.length()) + " ไบต์)");
   File v = LittleFS.open(UI_VER, "w");
   if (v) { v.print(uiVer); v.close(); }
   server.sendHeader("X-UI-Ver", String(uiVer));

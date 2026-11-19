@@ -345,10 +345,13 @@
         var v = +(r.headers.get("X-UI-Ver") || 0);
         return r.text().then(function (t) {
           v = v || +t || 0;
-          if (r.status === 200) { setVer(v); last = j; } else if (r.status === 409 && !retry) { setVer(v); push(true); }
+          if (r.status === 200) { setVer(v); last = j; uiSay(L("ส่งค่าหน้าจอไปบอร์ดแล้ว v", "Sent to the board, v") + v); }
+          else if (r.status === 409 && !retry) { setVer(v); push(true); }
+          else uiSay(L("ส่งค่าหน้าจอไม่สำเร็จ (", "Could not send the screen setup (") + r.status + ")");
         });
-      }).catch(function () {});
+      }).catch(function (e) { uiSay(L("ส่งค่าหน้าจอไม่สำเร็จ: ", "Could not send the screen setup: ") + (e && e.message || e)); });
     }
+    function uiSay(t) { T.uiInfo = t + " · " + new Date().toLocaleTimeString(); }
     function later() { if (!mute) { clearTimeout(timer); timer = setTimeout(push, 1500); } }
     P.setItem = function (k, v) { setI.call(this, k, v); if (this === ls && KEYS.indexOf(k) >= 0) later(); };
     P.removeItem = function (k) { remI.call(this, k); if (this === ls && KEYS.indexOf(k) >= 0) later(); };
@@ -361,12 +364,12 @@
             // the board's copy wins when it differs from this phone's: compare the content too, not only the version
             // (a BOOT reset starts the board's count at 0 again, so a phone's old number can match by chance)
             var theirs = JSON.stringify(snapOf(d)), mine = JSON.stringify(snapOf(snap()));
-            if (theirs !== mine) { apply(d); setVer(bv); synced = true; try { sessionStorage.setItem("tg-ui-reload", "1"); } catch (e) {} location.reload(); return; }
-            setVer(bv); last = theirs;
-          } else if (first) { setVer(0); synced = true; setTimeout(push, 1500); return; }   // nothing on the board yet: this phone's screen becomes the shared one
+            if (theirs !== mine) { apply(d); setVer(bv); synced = true; uiSay(L("ได้ค่าหน้าจอจากบอร์ด v", "Took the board's screen setup, v") + bv); try { sessionStorage.setItem("tg-ui-reload", "1"); } catch (e) {} location.reload(); return; }
+            setVer(bv); last = theirs; uiSay(L("หน้าจอตรงกับบอร์ดแล้ว v", "Same screen as the board, v") + bv);
+          } else if (first) { setVer(0); synced = true; uiSay(L("บอร์ดยังไม่มีค่าหน้าจอ ส่งของเครื่องนี้ไป", "The board has no screen setup yet: sending this phone's")); setTimeout(push, 1500); return; }   // nothing on the board yet: this phone's screen becomes the shared one
           synced = true;
         });
-      }).catch(function () {});
+      }).catch(function (e) { uiSay(L("ดึงค่าหน้าจอไม่สำเร็จ: ", "Could not get the screen setup: ") + (e && e.message || e)); });
     }
     var pulled = false;
     T.on(function (s) { if (s === "on" && !pulled) { pulled = true; pull(true); } if (s !== "on") pulled = false; });
@@ -448,6 +451,7 @@
     var on = T.state === "on";
     c.querySelector("#bt-st").textContent = on ? L("เชื่อมต่อแล้ว", "Connected") + (T.name ? " · " + T.name : "") : btTxt()[0];
     c.querySelector("#bt-gps").textContent = gpsTxt();
+    c.querySelector("#bt-ui").textContent = T.uiInfo || "–";
     c.querySelector("#bt-ap").textContent = !on || !apInfo ? "–" : apInfo.ap ? L("เปิดอยู่", "On") + " · " + apInfo.ssid + (apInfo.auto && apInfo.off > 0 ? " · " + L("ปิดเองใน ", "turns off in ") + Math.max(1, Math.round(apInfo.off / 60)) + L(" นาที", " min") : "") : L("ปิดอยู่", "Off");
     c.querySelector("#bt-go").hidden = on || !T.supported;
     c.querySelector("#bt-off").hidden = !on || MOCK;
@@ -501,6 +505,7 @@
         '<div class="bt-kv"><span>' + L("เกจ", "Gauge") + '</span><b id="bt-st">–</b></div>' +
         '<div class="bt-kv"><span>' + L("GPS มือถือ (ความเร็ว)", "Phone GPS (speed)") + '</span><b id="bt-gps">–</b></div>' +
         '<div class="bt-kv"><span>' + L("Wi-Fi ของบอร์ด", "Board Wi-Fi") + '</span><b id="bt-ap">–</b></div>' +
+        '<div class="bt-kv"><span>' + L("ซิงก์หน้าจอ", "Screen sync") + '</span><b id="bt-ui">–</b></div>' +
         '<p class="bt-err"></p><div class="acts">' +
         '<button class="btn go" type="button" id="bt-go">' + L("เชื่อมต่อเกจ", "Connect gauge") + '</button>' +
         '<button class="btn" type="button" id="bt-gpsgo">' + L("เปิด GPS", "Turn on GPS") + '</button>' +

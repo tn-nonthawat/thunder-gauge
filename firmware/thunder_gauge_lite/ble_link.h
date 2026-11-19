@@ -43,6 +43,8 @@ volatile bool blPull = false;      // pull mode (hello byte 5 bit 0): the phone 
 volatile uint16_t blLiveMs = 100;   // shortest gap between live packets, asked by the phone in its hello (iPhone/Bluefy: 1000)
 volatile bool blHello = false;   // a phone wrote hello (with a PIN set: only a paired one can): the .ino turns Wi-Fi off
 volatile uint16_t blConnId = 0;
+volatile uint16_t blOldConn = 0xFFFF;   // a link that was still up when another phone connected: loop() drops it
+volatile uint8_t blHelloEvt = 0;        // hello seen (bit 0), pull mode asked (bit 1): logged from loop()
 uint32_t blRestartAt = 0;
 
 // request coming in (filled by the BLE task, taken by loop())
@@ -70,8 +72,15 @@ static void blNotify(BLECharacteristic* c, const uint8_t* d, size_t n) {
 }
 
 class BlSrvCb : public BLEServerCallbacks {
-  void onConnect(BLEServer* s, ble_gap_conn_desc* d) override { blConnId = d->conn_handle; blConnAt = millis(); blGreeted = false; blConn = true; blEvt |= 1; }
+  // One phone at a time, the newest wins. Every link state (pull mode, a reply in progress, a half-sent request)
+  // belongs to one phone, so a new link starts clean, and an older link that drops later does not end the new one.
+  void onConnect(BLEServer* s, ble_gap_conn_desc* d) override {
+    if (blConn && d->conn_handle != blConnId) blOldConn = blConnId;
+    blConnId = d->conn_handle; blConnAt = millis(); blGreeted = false; blPull = false; blInReady = false; blInSeq = 0xFFFF;
+    blConn = true; blEvt |= 1;
+  }
   void onDisconnect(BLEServer* s, ble_gap_conn_desc* d) override {
+    if (blConn && d->conn_handle != blConnId) { blEvt |= 4; return; }   // the older phone, already replaced
     blConn = false; blEvt |= 2;
     if (blOtaOn) { Update.abort(); blOtaOn = false; otaBusy = false; blOtaStatus("err หลุดการเชื่อมต่อ"); }
   }
@@ -94,7 +103,7 @@ class BlReqCb : public BLECharacteristicCallbacks {
     if (n < 4) return;
     uint8_t kind = p[0], id = p[1]; uint16_t seq = p[2] | (p[3] << 8);
     if (kind == 3) { blAckId = id; blAckSeq = seq; blAckNew = true; return; }
-    if (kind == 4) { blHello = true; blGreeted = true; blLiveMs = n >= 5 && p[4] ? p[4] * 100 : 100; blPull = n >= 6 && (p[5] & 1); return; }   // byte 4 = live interval x100 ms   // hello: the phone pairs here, before it subscribes
+    if (kind == 4) { blHello = true; blGreeted = true; blLiveMs = n >= 5 && p[4] ? p[4] * 100 : 100; blPull = n >= 6 && (p[5] & 1); blHelloEvt = 1 | (blPull ? 2 : 0); return; }   // byte 4 = live interval x100 ms   // hello: the phone pairs here, before it subscribes
     if (kind != 1 && kind != 2) return;
     if (blInReady) return;                       // loop() has not taken the last one yet: the phone retries
     if (seq == 0) { blIn = ""; blInId = id; blInSeq = 0; }
@@ -260,8 +269,21 @@ void bleLoop() {
   if (blRestartAt && (int32_t)(millis() - blRestartAt) >= 0) ESP.restart();
   if (blEvt) {                                   // connect / disconnect, logged here (not from the BLE task)
     uint8_t e = blEvt; blEvt = 0;
-    if (e & 1) logLine("บลูทูธ: มีมือถือต่อเข้ามา");
+    if (e & 1) {
+      blOutBusy = false; blOut = "";             // a reply to the previous phone is not wanted any more
+      logLine("บลูทูธ: มีมือถือต่อเข้ามา (ลิงก์ " + String(blConnId) + ", ต่ออยู่ " + String(blSrv->getConnectedCount()) + " เครื่อง)");
+    }
+    if (e & 4) logLine("บลูทูธ: เครื่องเก่าหลุด (เครื่องที่ต่ออยู่ใช้ต่อได้)");
     if ((e & 2) && !blConn) logLine("บลูทูธ: มือถือหลุด กลับไปรอให้ต่อ");
+  }
+  if (blOldConn != 0xFFFF) {
+    uint16_t o = blOldConn; blOldConn = 0xFFFF;
+    logLine("บลูทูธ: ตัดเครื่องเก่า (ลิงก์ " + String(o) + ") ให้เครื่องใหม่ใช้");
+    blSrv->disconnect(o);
+  }
+  if (blHelloEvt) {
+    uint8_t h = blHelloEvt; blHelloEvt = 0;
+    logLine(String("บลูทูธ: แอปทักทาย · ") + (h & 2 ? "แอปอ่านเอง (iPhone)" : "บอร์ดส่งให้ (Android)") + " · MTU " + String(blSrv->getPeerMTU(blConnId)));
   }
   if (blAuthEvt) {
     blAuthEvt = false; uint8_t f = blAuthFlags;

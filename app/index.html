@@ -1147,7 +1147,7 @@ window.MAP_STORE = {
     }).then(function (c) {
       ch = { live: c[0], req: c[1], res: c[2], ota: c[3] };
       // hello first: the board only answers paired phones, so this is where Android asks for the PIN
-      return gatt(function () { return wr(ch.req, u8([4, 0, 0, 0])); });
+      return gatt(function () { return wr(ch.req, u8([4, 0, 0, 0, IOS ? 10 : 1])); });   // byte 4: live data every n x 100 ms (iPhone browsers pass Bluetooth data slowly)
     }).then(function () {
       ch.res.addEventListener("characteristicvaluechanged", onRes);
       ch.live.addEventListener("characteristicvaluechanged", onLive);
@@ -1528,7 +1528,7 @@ window.MAP_STORE = {
         '<button class="btn" type="button" id="bt-apoff">' + L("ปิด Wi-Fi ของบอร์ด", "Turn board Wi-Fi off") + '</button>' +
         '<button class="btn" type="button" id="bt-off">' + L("ตัดการเชื่อมต่อ", "Disconnect") + '</button></div>' +
         '<p class="note">' + L("ความเร็วมาจาก GPS ของมือถือ (ECU ของ Wave 110i ไม่ส่งความเร็ว) ได้ราว 1 ครั้งต่อวินาที วางมือถือให้เห็นท้องฟ้า · Wi-Fi ของบอร์ดใช้ตอนอยากเปิดหน้าเกจจากมือถือเครื่องอื่นหรือ iPhone (http://192.168.4.1) บอร์ดปิด Wi-Fi เองเมื่อแอปนี้ต่อบลูทูธ และปิดอีกครั้งเมื่อไม่มีใครต่อ 10 นาที",
-          "Speed comes from the phone's GPS (the Wave 110i ECU sends none), about once a second; keep the phone where it sees the sky · The board's Wi-Fi is for opening the gauge on another phone or an iPhone (http://192.168.4.1); the board turns it off once this app connects over Bluetooth, and again after 10 minutes with nobody on it") + '</p><p class="note" style="opacity:.6">' + L("รุ่นแอป ", "App build ") + "2026-11-19 22:29" + '</p></div>');
+          "Speed comes from the phone's GPS (the Wave 110i ECU sends none), about once a second; keep the phone where it sees the sky · The board's Wi-Fi is for opening the gauge on another phone or an iPhone (http://192.168.4.1); the board turns it off once this app connects over Bluetooth, and again after 10 minutes with nobody on it") + '</p><p class="note" style="opacity:.6">' + L("รุ่นแอป ", "App build ") + "2026-11-19 22:36" + '</p></div>');
       set.insertBefore(card, set.querySelector(".card"));
       card.querySelector("#bt-go").addEventListener("click", T.connect);
       card.querySelector("#bt-off").addEventListener("click", T.disconnect);

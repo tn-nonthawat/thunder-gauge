@@ -162,7 +162,7 @@
     }).then(function (c) {
       ch = { live: c[0], req: c[1], res: c[2], ota: c[3] };
       // hello first: the board only answers paired phones, so this is where Android asks for the PIN
-      return gatt(function () { return wr(ch.req, u8([4, 0, 0, 0])); });
+      return gatt(function () { return wr(ch.req, u8([4, 0, 0, 0, IOS ? 10 : 1])); });   // byte 4: live data every n x 100 ms (iPhone browsers pass Bluetooth data slowly)
     }).then(function () {
       ch.res.addEventListener("characteristicvaluechanged", onRes);
       ch.live.addEventListener("characteristicvaluechanged", onLive);

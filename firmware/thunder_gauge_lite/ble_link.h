@@ -39,6 +39,7 @@ BLEServer* blSrv = nullptr;
 BLECharacteristic *blLive = nullptr, *blReq = nullptr, *blRes = nullptr, *blOta = nullptr;
 volatile bool blConn = false;
 volatile bool blGreeted = false; volatile uint32_t blConnAt = 0; volatile uint8_t blEvt = 0;   // this link said hello; when it came; connect/disconnect seen (logged from loop())
+volatile uint16_t blLiveMs = 100;   // shortest gap between live packets, asked by the phone in its hello (iPhone/Bluefy: 1000)
 volatile bool blHello = false;   // a phone wrote hello (with a PIN set: only a paired one can): the .ino turns Wi-Fi off
 volatile uint16_t blConnId = 0;
 uint32_t blRestartAt = 0;
@@ -90,7 +91,7 @@ class BlReqCb : public BLECharacteristicCallbacks {
     if (n < 4) return;
     uint8_t kind = p[0], id = p[1]; uint16_t seq = p[2] | (p[3] << 8);
     if (kind == 3) { blAckId = id; blAckSeq = seq; blAckNew = true; return; }
-    if (kind == 4) { blHello = true; blGreeted = true; return; }   // hello: the phone pairs here, before it subscribes
+    if (kind == 4) { blHello = true; blGreeted = true; blLiveMs = n >= 5 && p[4] ? p[4] * 100 : 100; return; }   // byte 4 = live interval x100 ms   // hello: the phone pairs here, before it subscribes
     if (kind != 1 && kind != 2) return;
     if (blInReady) return;                       // loop() has not taken the last one yet: the phone retries
     if (seq == 0) { blIn = ""; blInId = id; blInSeq = 0; }
@@ -230,8 +231,11 @@ void blSendTick() {
 void blLiveTick() {
   static uint32_t lastAt = 0, lastSend = 0; static bool lastAwake = false;
   uint32_t now = millis();
-  if (now - lastSend < 100) return;
-  if (liveAt == lastAt && awake == lastAwake && now - lastSend < 500) return;
+  // Live data waits while a reply is being sent: a slow phone browser (iPhone/Bluefy) passes Bluetooth data to the
+  // page one by one, so a stream of live packets would make every reply wait behind it.
+  if (blOutBusy) return;
+  if (now - lastSend < blLiveMs) return;
+  if (liveAt == lastAt && awake == lastAwake && now - lastSend < max((uint16_t)500, (uint16_t)blLiveMs)) return;
   lastAt = liveAt; lastAwake = awake; lastSend = now;
   uint8_t b[8 + 64 + 8 + 8]; int n = 0;
   uint32_t age = liveLen ? now - liveAt : 65535; if (age > 65535) age = 65535;
